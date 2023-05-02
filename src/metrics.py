@@ -27,21 +27,30 @@ def min_max_metric(tfs, threashold):
     return x_t, y_t, z_t
 
 
-def vel_metric(tfs, threashold):
+def vel_metric(tfs, threashold, return_seq=False):
     if docs_in_cursor(tfs) == 0:
         print("No TFs in given Cursor")
         return
     result = 0
-    prev = np.array([0, 0, 0])
-    for vel in tfs_to_velocity(tfs):
-        norm = np.linalg.norm(vel)
-        if norm == 0:
-            v = np.array([0, 0, 0])
-        else:
-            v = vel / norm
+    result_seqs = []
 
-        diff = v - prev
-        if np.linalg.norm(diff) > threashold / norm:
+    for chk in tfs_to_velocity(tfs, 5):
+        diffs = []
+        prev = np.array([0, 0, 0])
+        for vel, seq in chk:
+            norm = np.linalg.norm(vel)
+            if norm == 0:
+                v = np.array([0, 0, 0])
+            else:
+                v = vel / norm
+            diff = v - prev
+            diffs.append(diff)
+            prev = v
+        if np.average(diffs) > threashold:
             result += 1
-        prev = v
-    return result
+            result_seqs.append([index[1] for index in chk])
+    if return_seq:
+        result_seqs = np.unique(np.array(result_seqs).flatten())
+        return result, result_seqs
+    else:
+        return result

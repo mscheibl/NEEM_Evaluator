@@ -37,7 +37,7 @@ class BulletWorld:
 
     current_bullet_world: BulletWorld = None
     robot: Object = None
-    rospy.init_node('pycram')
+    #rospy.init_node('pycram')
 
     def __init__(self, type: str = "GUI", is_shadow_world: bool = False):
         """
@@ -241,12 +241,14 @@ class BulletWorld:
         except ValueError:
             rospy.logerr("The given object is not in the shadow world")
 
-    def visualize_trajectory(self, tfs):
+    def visualize_trajectory(self, tfs, mark_seq=[]):
         tfs_list = list(tfs)
         for i in range(len(tfs_list) -1):
             source = transform_to_translation(tfs_list[i]["transform"])
             target = transform_to_translation(tfs_list[i+1]["transform"])
             self.trajectory_ids.append(p.addUserDebugLine(source, target, [1, 0, 0]))
+            if tfs_list[i]["header"]["seq"] in mark_seq:
+                self.trajectory_ids.append(p.addUserDebugText("Metric", source, [0, 0, 0]))
 
     def remove_trajectory(self):
         for line in self.trajectory_ids:

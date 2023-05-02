@@ -6,11 +6,14 @@ client = pymongo.MongoClient('mongodb://localhost:27017/')
 db = client["roslog"]
 tf = db["tf"]
 
+
 def get_object_names():
     return tf.distinct("child_frame_id")
 
+
 def get_tf_for_object(name):
     return tf.find({"child_frame_id": name})
+
 
 def restore(path):
     """
@@ -39,6 +42,7 @@ def restore(path):
                 with open(os.path.join(coll, file), 'rb+') as f:
                     db[file.split('.')[0]].insert_many(bson.decode_all(f.read()))
     print("Successfully loaded NEEM")
+
 
 def remove_neem():
     return client.drop_database("roslog")

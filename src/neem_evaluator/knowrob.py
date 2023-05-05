@@ -1,6 +1,6 @@
 import rospy
 import rosservice
-from mongo import restore, tf
+from .mongo import restore, tf
 from datetime import datetime
 if '/rosprolog/query' in rosservice.get_service_list():
     from rosprolog_client import Prolog
@@ -14,7 +14,7 @@ rospy.init_node("NEEM_Evaluator")
 
 def remember_neem(path):
     # Loads the NEEM into Knowrob
-    prolog.once(f"remeber('{path}')")
+    prolog.once(f"remember('{path}')")
     # Is needed since Knowrob does not load the TF data to Mongo and without it
     # the queries do not work
     restore(path)
@@ -37,23 +37,34 @@ def get_all_actions_in_neem():
     return res
 
 
-def get_object_to_action():
+def get_objects_for_action(action):
     mapping = prolog.once("findall([Act, Obj], has_participant(Act, Obj), Obj)")
-    obj_to_act = {}
+    act_to_obj = {}
     for m in mapping["Obj"]:
-        if m[0] not in obj_to_act.keys():
-            obj_to_act[m[0]] = [m[1]]
+        if m[0] not in act_to_obj.keys():
+            act_to_obj[m[0]] = [m[1]]
         else:
-            obj_to_act[m[0]].append(m[1])
-    return obj_to_act
+            act_to_obj[m[0]].append(m[1])
+    return act_to_obj[action]
+
+
+def get_link_name_for_object(object):
+    query = prolog.once(f"has_base_link('{object}', A)")
+    if query:
+        link_name = query["A"]
+        return link_name.split("#")[1]
 
 
 def get_all_tf_for_action(action):
     intervals = get_event_intervals()[action]
-    objects = get_object_to_action()[action]
+    objects = get_objects_for_action(action)
     result = {}
     for obj in objects:
-        # TODO Mapping from ontology to child frame names !!
-        result[obj] = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"]), "$lt": datetime.fromtimestamp(intervals["end"])}, "child_frame_id" : HERE })
-    #query = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"]), "$lt": datetime.fromtimestamp(intervals["end"])}})
-    return query
+        link_name = get_link_name_for_object(obj)
+        if link_name:
+            # -3600 is to compensate for difference in intervals of knowrob and TFs
+            result[obj] = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"] - 3600), "$lt": datetime.fromtimestamp(intervals["end"]- 3600)}, "child_frame_id" : link_name })
+        else:
+            continue
+
+    return result

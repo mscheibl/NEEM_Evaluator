@@ -1,6 +1,7 @@
 import numpy as np
 
-from helper import chunks, transform_to_translation, tfs_to_velocity, docs_in_cursor
+from .helper import chunks, transform_to_translation, tfs_to_velocity, docs_in_cursor
+
 
 def min_max_metric(tfs, threashold):
     if docs_in_cursor(tfs) == 0:
@@ -34,6 +35,7 @@ def vel_metric(tfs, threashold, return_seq=False):
     result = 0
     result_seqs = []
 
+    i = 0
     for chk in tfs_to_velocity(tfs, 5):
         diffs = []
         prev = np.array([0, 0, 0])
@@ -43,12 +45,21 @@ def vel_metric(tfs, threashold, return_seq=False):
                 v = np.array([0, 0, 0])
             else:
                 v = vel / norm
+            #v = vel
             diff = v - prev
+
             diffs.append(diff)
             prev = v
-        if np.average(diffs) > threashold:
+        max_dif = max([np.linalg.norm(dif) for dif in diffs])
+        min_dif = min([np.linalg.norm(dif) for dif in diffs])
+        print(f"{i} max_dif: {max_dif}")
+        print(f"{i} min_dif: {min_dif}")
+        print()
+        i+=1
+        if max_dif > threashold:
             result += 1
             result_seqs.append([index[1] for index in chk])
+
     if return_seq:
         result_seqs = np.unique(np.array(result_seqs).flatten())
         return result, result_seqs

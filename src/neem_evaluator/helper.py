@@ -45,6 +45,7 @@ def docs_in_cursor(cursor):
 def tfs_to_velocity(coll, chunks=1):
     """
     Creates the velocities from a collection of TFs, the number of calulated velocities is number_of_tfs - 1
+
     :param coll: The collection from which to calculate the velocities
     :param chunks: Number velocity vectors that should be returned
     :return: A generator that returns velocities with chunk size
@@ -64,9 +65,10 @@ def tfs_to_velocity(coll, chunks=1):
         tfs.remove(tfs[0])
         tfs.append(coll.next())
 
-    # while coll.alive:
-    #     yield second_vector - first_vector, first["header"]["seq"]
-    #     first = second
-    #     first_vector = second_vector
-    #     second = coll.next()
-    #     second_vector = np.array(transform_to_translation(second["transform"]))
+
+def cluster_sequences(sequences):
+    cluster = (np.diff(sequences)>1).nonzero()[0] + 1
+    result = []
+    for i in range(len(cluster) - 1):
+        result.append([sequences[cluster[i]: cluster[i+1]]])
+    return result

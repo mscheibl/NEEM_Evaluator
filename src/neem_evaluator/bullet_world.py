@@ -23,7 +23,7 @@ from typing import List, Optional, Union, Dict
 #from .event import Event
 #from .robot_descriptions.robot_description_handler import InitializedRobotDescription as robot_description
 from typing import List, Optional, Dict, Tuple, Callable, Type
-from helper import transform_to_translation
+from .helper import transform_to_translation
 
 
 
@@ -64,7 +64,7 @@ class BulletWorld:
             BulletWorld.current_bullet_world = self
         self.vis_axis: Object = None
         self.coll_callbacks: Dict[Tuple[Object, Object], Tuple[Callable, Callable]] = {}
-        self.data_directory: List[str] = [os.path.dirname(__file__) + "/../resources"]
+        self.data_directory: List[str] = [os.path.dirname(__file__) + "/../../resources"]
         self.shadow_world: BulletWorld = BulletWorld("DIRECT", True) if not is_shadow_world else None
         self.world_sync: World_Sync = World_Sync(self, self.shadow_world) if not is_shadow_world else None
         self.is_shadow_world: bool = is_shadow_world
@@ -241,12 +241,13 @@ class BulletWorld:
         except ValueError:
             rospy.logerr("The given object is not in the shadow world")
 
-    def visualize_trajectory(self, tfs, mark_seq=[]):
+    def visualize_trajectory(self, tfs, mark_seq=[], color=None):
         tfs_list = list(tfs)
+        color = color if color else [1,0,0]
         for i in range(len(tfs_list) -1):
             source = transform_to_translation(tfs_list[i]["transform"])
             target = transform_to_translation(tfs_list[i+1]["transform"])
-            self.trajectory_ids.append(p.addUserDebugLine(source, target, [1, 0, 0]))
+            self.trajectory_ids.append(p.addUserDebugLine(source, target, color))
             if tfs_list[i]["header"]["seq"] in mark_seq:
                 self.trajectory_ids.append(p.addUserDebugText("Metric", source, [0, 0, 0]))
 

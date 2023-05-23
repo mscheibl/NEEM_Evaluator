@@ -70,5 +70,18 @@ def cluster_sequences(sequences):
     cluster = (np.diff(sequences)>1).nonzero()[0] + 1
     result = []
     for i in range(len(cluster) - 1):
-        result.append([sequences[cluster[i]: cluster[i+1]]])
+        result.append([sequences[cluster[i]: cluster[i+1]]][0])
+    return result
+
+
+def cluster_to_actions(cluster, seq_to_actions):
+    result = {}
+    i = 0
+    for cls in cluster:
+        try:
+            mapping = [seq_to_actions[x] for x in cls]
+            result[i] = mapping
+        except KeyError:
+            pass
+        i+=1
     return result

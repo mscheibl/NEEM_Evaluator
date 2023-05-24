@@ -13,6 +13,12 @@ rospy.init_node("NEEM_Evaluator")
 
 
 def remember_neem(path):
+    """
+    Loads the neem in the given path to knowrob
+
+    :param path: Path to the neem
+    :return: None
+    """
     # Loads the NEEM into Knowrob
     prolog.once(f"remember('{path}')")
     # Is needed since Knowrob does not load the TF data to Mongo and without it
@@ -21,6 +27,11 @@ def remember_neem(path):
 
 
 def get_event_intervals():
+    """
+    Returns the start and end times for all actions
+
+    :return: A dict with action as key and start and end times as value
+    """
     intervals = prolog.once("findall([Begin, End, Evt], event_interval(Evt, Begin, End), Times)")
     result = {}
     for interval in intervals["Times"]:
@@ -30,6 +41,11 @@ def get_event_intervals():
 
 
 def get_all_actions_in_neem():
+    """
+    Returns a dictionary which maps all actions happening in this NEEM to the human-readable name of the action.
+
+    :return: A dict of action instances to human-readable action names
+    """
     actions = prolog.once("findall([Act, Task], (is_action(Act), executes_task(Act, Task)), Act)")["Act"]
     res = {}
     for act in actions:
@@ -38,6 +54,12 @@ def get_all_actions_in_neem():
 
 
 def get_objects_for_action(action):
+    """
+    Returns a list of objects which are part of the given action.
+
+    :param action: The action for which objects should be returned
+    :return: An action instance
+    """
     mapping = prolog.once("findall([Act, Obj], has_participant(Act, Obj), Obj)")
     act_to_obj = {}
     for m in mapping["Obj"]:
@@ -49,6 +71,11 @@ def get_objects_for_action(action):
 
 
 def get_actions_for_object():
+    """
+    Returns a dictionary which maps all available knowrob objetct instances to the actions which they are part of.
+
+    :return: A dict mapping objects to a list of actinos
+    """
     all_actions = get_all_actions_in_neem()
     action_to_objects = {}
     object_to_actions = {}
@@ -64,6 +91,12 @@ def get_actions_for_object():
 
 
 def get_link_name_for_object(object):
+    """
+    Returns the link name for a knowrob object instance.
+
+    :param object: The knowrob instance
+    :return:  The link name as used in the TFs
+    """
     query = prolog.once(f"has_base_link('{object}', A)")
     if query:
         link_name = query["A"]
@@ -71,6 +104,12 @@ def get_link_name_for_object(object):
 
 
 def get_all_tf_for_action(action):
+    """
+    Get all TFs for objects that are part of the given action.
+
+    :param action: Action as knowrob instance
+    :return: A dictioniary which maps the object that are part of the given action to a TF cursor
+    """
     intervals = get_event_intervals()[action]
     objects = get_objects_for_action(action)
     result = {}
@@ -87,6 +126,13 @@ def get_all_tf_for_action(action):
 
 
 def map_sequence_to_action(object):
+    """
+    Mapps the sequences of the trajectory of the given object to the action that occurred during that sequence. The object
+    has to given as a knowrob object. The returned action is readable and not the specific instance.
+
+    :param object: The knowrob object for which the trajectory should be mapped
+    :return: A dictionary with the sequence as key and the Action as value.
+    """
     all_actions = get_all_actions_in_neem()
     o_t_a = get_actions_for_object()
     link_names = map(get_link_name_for_object, o_t_a.keys())
@@ -105,6 +151,12 @@ def map_sequence_to_action(object):
 
 
 def get_object_for_link(link_name):
+    """
+    Returns the knowrob object name for a link/TF name
+
+    :param link_name: The name of the link
+    :return: The corresponding name in knowrob
+    """
     all_objects = list(get_actions_for_object().keys())
     link_to_obj = {}
     for obj in all_objects:

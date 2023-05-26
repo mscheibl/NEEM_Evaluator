@@ -49,7 +49,12 @@ def get_all_actions_in_neem():
     actions = prolog.once("findall([Act, Task], (is_action(Act), executes_task(Act, Task)), Act)")["Act"]
     res = {}
     for act in actions:
-        res[act[0]] = act[1]
+        #res[act[0]] = act[1]
+        action_type = act[1].split('#')[1].split("_")[0]
+        if action_type in res.keys():
+            res[action_type].append(act[0])
+        else:
+            res[action_type] = [act[0]]
     return res
 
 

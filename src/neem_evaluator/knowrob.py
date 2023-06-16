@@ -9,7 +9,7 @@ else:
     rospy.logerr("No Knowrob services found")
     raise ImportWarning("No Knowrob services found")
 
-rospy.init_node("NEEM_Evaluator")
+#rospy.init_node("NEEM_Evaluator")
 
 
 def remember_neem(path):

@@ -37,7 +37,6 @@ class BulletWorld:
 
     current_bullet_world: BulletWorld = None
     robot: Object = None
-    #rospy.init_node('pycram')
 
     def __init__(self, type: str = "GUI", is_shadow_world: bool = False):
         """

@@ -1,6 +1,8 @@
 from .knowrob import *
 from .mongo import *
 from typing import Dict, List
+from bson.objectid import ObjectId
+from datetime import datetime
 
 import json
 import copy
@@ -9,7 +11,7 @@ import rospy
 
 class NeemObject:
 
-    def __init__(self, name, instance, link_name=None, tf_query=None):
+    def __init__(self, name, instance, link_name=None, tf_list=None):
         """
         Representing an object that is part of a NEEM
 
@@ -19,11 +21,11 @@ class NeemObject:
         self.name = name
         self.instance = instance
         self._tf = None
+        self._tf_list = None
         self.link_name = link_name if link_name else get_link_name_for_object(self.instance)
 
-        if tf_query:
-            query = json.loads(tf_query.replace("'", '"'))
-            self._tf = tf.find(query)
+        if tf_list:
+            self._tf_list = tf_list
         else:
             self._load_tf()
 
@@ -34,16 +36,34 @@ class NeemObject:
             rospy.loginfo(f"NEEM Object: {self.name} has no tf_link_name therefore no tf pointer could be loaded")
 
     def get_tfs(self):
-        return copy.copy(self._tf)
+        if self._tf:
+            return copy.copy(self._tf)
+        elif self._tf_list:
+            return (t for t in self._tf_list)
+        else:
+            return []
 
     def __iter__(self):
         pass
+
+    def _json_to_mongo(self):
+        for tf in self._tf_list:
+            tf["_id"] = ObjectId(tf["_id"])
+            tf["header"]["stamp"] = datetime.fromisoformat(tf["header"]["stamp"])
+            tf["__recorded"] = datetime.fromisoformat(tf["__recorded"])
+
+    def _clean_tf_for_json(self):
+        for tf in self.get_tfs():
+            tf["_id"] = str(tf["_id"])
+            tf["header"]["stamp"] = str(tf["header"]["stamp"])
+            tf["__recorded"] = str(tf["__recorded"])
+            yield tf
 
     def to_json(self):
         obj_json = {"name": self.name,
                     "instance": self.instance,
                     "link_name": self.link_name,
-                    "tf_query": str(self._tf.explain()['queryPlanner']['parsedQuery']) if self._tf else ""}
+                    "tf_list": self._tf_list if self._tf_list else list(self._clean_tf_for_json())}
 
         return obj_json
 
@@ -125,9 +145,8 @@ class Neem:
         return self._action_list
 
     def to_json(self):
-        neem_json = {}
-        neem_json["name"] = self.name
-        neem_json["actions"] = [act.to_json() for act in self._action_list]
+        neem_json = {"name": self.name,
+                     "actions": [act.to_json() for act in self._action_list]}
 
         return neem_json
 
@@ -136,7 +155,7 @@ class Neem:
         self.name = d["name"]
         self._action_list = []
         for action in d["actions"]:
-            objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_query"]) for obj in action["objects"]]
+            objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in action["objects"]]
             self._action_list.append(Action(action["name"], action["instance"], action["start"], action["end"], objects))
 
     def save(self, path):

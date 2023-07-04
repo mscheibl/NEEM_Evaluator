@@ -1,6 +1,6 @@
 from .knowrob import *
 from .mongo import *
-from typing import Dict, List
+from typing import Dict, List, Iterable
 from bson.objectid import ObjectId
 from datetime import datetime
 
@@ -11,31 +11,31 @@ import rospy
 
 class NeemObject:
 
-    def __init__(self, name, instance, link_name=None, tf_list=None):
+    def __init__(self, name: str, instance: str, link_name: str = None, tf_list: List = None):
         """
         Representing an object that is part of a NEEM
 
         :param name: A human-readable name
         :param instance: The unique instance of the ontology
         """
-        self.name = name
-        self.instance = instance
+        self.name: str = name
+        self.instance: str = instance
         self._tf = None
-        self._tf_list = None
-        self.link_name = link_name if link_name else get_link_name_for_object(self.instance)
+        self._tf_list: List = None
+        self.link_name: str = link_name if link_name else get_link_name_for_object(self.instance)
 
         if tf_list:
             self._tf_list = tf_list
         else:
             self._load_tf()
 
-    def _load_tf(self):
+    def _load_tf(self) -> None:
         if self.link_name:
             self._tf = get_tf_for_object(self.link_name)
         else:
             rospy.loginfo(f"NEEM Object: {self.name} has no tf_link_name therefore no tf pointer could be loaded")
 
-    def get_tfs(self):
+    def get_tfs(self) -> Iterable:
         if self._tf:
             return copy.copy(self._tf)
         elif self._tf_list:
@@ -46,20 +46,20 @@ class NeemObject:
     def __iter__(self):
         pass
 
-    def _json_to_mongo(self):
+    def _json_to_mongo(self) -> None:
         for tf in self._tf_list:
             tf["_id"] = ObjectId(tf["_id"])
             tf["header"]["stamp"] = datetime.fromisoformat(tf["header"]["stamp"])
             tf["__recorded"] = datetime.fromisoformat(tf["__recorded"])
 
-    def _clean_tf_for_json(self):
+    def _clean_tf_for_json(self) -> None:
         for tf in self.get_tfs():
             tf["_id"] = str(tf["_id"])
             tf["header"]["stamp"] = str(tf["header"]["stamp"])
             tf["__recorded"] = str(tf["__recorded"])
             yield tf
 
-    def to_json(self):
+    def to_json(self) -> Dict:
         obj_json = {"name": self.name,
                     "instance": self.instance,
                     "link_name": self.link_name,
@@ -70,13 +70,13 @@ class NeemObject:
 
 class Action:
 
-    def __init__(self, name, instance, start=None, end=None, objects=None):
-        self.name = name
-        self.instance = instance
-        self.start = None
-        self.end = None
-        self.participants = []
-        self.objects = []
+    def __init__(self, name: str, instance: str, start: int = None, end: int = None, objects: List[NeemObject] = None):
+        self.name: str = name
+        self.instance: str = instance
+        self.start: int = None
+        self.end: int = None
+        self.participants: List = []
+        self.objects: List[NeemObject] = []
 
         if start and end:
             self.start = start
@@ -89,21 +89,21 @@ class Action:
         else:
             self._load_objects()
 
-    def _load_intervals(self):
+    def _load_intervals(self) -> None:
         intervals = get_event_intervals()
         self.start = intervals[self.instance]['start']
         self.end = intervals[self.instance]['end']
 
-    def _load_objects(self):
+    def _load_objects(self) -> None:
         objects = get_objects_for_action(self.instance)
         for obj in objects:
             name = obj.split('#')[1]
             self.objects.append(NeemObject(name, obj))
 
-    def get_all_objects_for_action(self):
+    def get_all_objects_for_action(self) -> List[NeemObject]:
         return self.objects
 
-    def to_json(self):
+    def to_json(self) -> Dict:
         action_json = {"name": self.name,
                        "instance": self.instance,
                        "start": self.start,
@@ -115,7 +115,7 @@ class Action:
 
 class Neem:
 
-    def __init__(self, json_path=None):
+    def __init__(self, json_path: str = None):
         if json_path:
             with open(json_path, "r") as file:
                 self.from_json(file.read())
@@ -144,13 +144,13 @@ class Neem:
     def get_all_actions_in_neem(self) -> List[Action]:
         return self._action_list
 
-    def to_json(self):
+    def to_json(self) -> Dict:
         neem_json = {"name": self.name,
                      "actions": [act.to_json() for act in self._action_list]}
 
         return neem_json
 
-    def from_json(self, neem_json):
+    def from_json(self, neem_json: str) -> None:
         d = json.loads(neem_json)
         self.name = d["name"]
         self._action_list = []
@@ -158,7 +158,7 @@ class Neem:
             objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in action["objects"]]
             self._action_list.append(Action(action["name"], action["instance"], action["start"], action["end"], objects))
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         neem_json = json.dumps(self.to_json(), indent=4, separators=(", ", ": "))
         with open(path, "w") as file:
             file.write(neem_json)

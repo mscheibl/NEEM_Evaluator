@@ -1,4 +1,5 @@
 import numpy as np
+import pymongo
 
 
 def transform_to_list(transform):
@@ -70,7 +71,8 @@ def docs_in_cursor(cursor):
     :return: The number of elements
     """
     coll = cursor.collection
-    return coll.count_documents(cursor.explain()["executionStats"]["executionStages"]["filter"])
+    #return coll.count_documents(cursor.explain()["executionStats"]["executionStages"]["filter"])
+    return coll.count_documents(cursor.explain()["queryPlanner"]["parsedQuery"])
 
 
 def tfs_to_velocity(coll, chunks=1):
@@ -127,5 +129,48 @@ def cluster_to_actions(cluster, seq_to_actions):
             result[i] = mapping
         except KeyError:
             pass
-        i+=1
+        i += 1
     return result
+
+
+def co_appearance_of_events(neem):
+    appearance_pairs = []
+    for action in neem.action_list:
+        for action2 in neem.action_list:
+            if action2 == action:
+                continue
+            if action.start <= action2.start:
+                appearance_pairs.append((action, action2))
+    return appearance_pairs
+
+
+def relative_distance_of_events(neem):
+    event_distances = event_start_and_end_pose(neem)
+    res = {}
+    for action, distances in event_distances.items():
+        for action2, distances2 in event_distances.items():
+            if action == action2:
+                continue
+            res[(action, action2)] = (np.absolute(distances[0] - distances2[0]), np.absolute(distances[1] - distances2[1]))
+    return res
+
+
+def event_start_and_end_pose(neem):
+    res = {}
+    for action in neem.action_list:
+        first_positions = []
+        last_positions = []
+        for obj in action.objects:
+            tfs = obj.get_tfs_during_action(action)
+            if not tfs or docs_in_cursor(tfs) == 0:
+                continue
+
+            first_positions.append(np.array(list(next(tfs)["transform"]["translation"].values())))
+            # Since we started iterating the cursor we need a new one
+            tfs = obj.get_tfs_during_action(action)
+            tfs.sort("header.seq", pymongo.DESCENDING)
+            last_positions.append(np.array(list(next(tfs)["transform"]["translation"].values())))
+
+        res[action] = (np.mean(first_positions, axis=0), np.mean(last_positions, axis=0))
+
+    return res

@@ -67,14 +67,19 @@ class NeemObject:
 
         return obj_json
 
+    def get_tfs_during_action(self, action) -> Iterable:
+        return tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600),
+                                         "$lt": datetime.fromtimestamp(action.end - 3600)},
+                        "child_frame_id": self.link_name})
+
 
 class Action:
 
     def __init__(self, name: str, instance: str, start: int = None, end: int = None, objects: List[NeemObject] = None):
         self.name: str = name
         self.instance: str = instance
-        self.start: int = None
-        self.end: int = None
+        self.start: int = 0
+        self.end: int = 0
         self.participants: List = []
         self.objects: List[NeemObject] = []
 
@@ -88,6 +93,12 @@ class Action:
             self.objects = objects
         else:
             self._load_objects()
+
+    def __repr__(self):
+        skip_attributes = ["participants", "objects"]
+        return self.__class__.__qualname__ + f"(" + ', '.join(
+            [f"{key}={value}" if key not in skip_attributes else f"{key}=..." for key, value in
+             self.__dict__.items()]) + ")"
 
     def _load_intervals(self) -> None:
         intervals = get_event_intervals()
@@ -122,7 +133,7 @@ class Neem:
         else:
             self.name: str = None
             self.actions: Dict[str, List[Action]] = {}
-            self._action_list: List[Action] = []
+            self.action_list: List[Action] = []
             rospy.logdebug("Loading from Knowrob")
             self._load_actions()
 
@@ -132,38 +143,35 @@ class Neem:
             self.actions[name] = []
             for act_ins in action_instances:
                 self.actions[name].append(Action(name, act_ins))
-                self._action_list.append(Action(name, act_ins))
+                self.action_list.append(Action(name, act_ins))
 
     def get_all_objects_in_neem(self) -> List[NeemObject]:
         objects = set()
-        for act in self._action_list:
+        for act in self.action_list:
             for obj in act.objects:
                 objects.add(obj)
         return list(objects)
 
     def get_all_actions_in_neem(self) -> List[Action]:
-        return self._action_list
+        return self.action_list
 
     def to_json(self) -> Dict:
         neem_json = {"name": self.name,
-                     "actions": [act.to_json() for act in self._action_list]}
+                     "actions": [act.to_json() for act in self.action_list]}
 
         return neem_json
 
     def from_json(self, neem_json: str) -> None:
         d = json.loads(neem_json)
         self.name = d["name"]
-        self._action_list = []
+        self.action_list = []
         for action in d["actions"]:
-            objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in action["objects"]]
-            self._action_list.append(Action(action["name"], action["instance"], action["start"], action["end"], objects))
+            objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in
+                       action["objects"]]
+            self.action_list.append(
+                Action(action["name"], action["instance"], action["start"], action["end"], objects))
 
     def save(self, path: str) -> None:
         neem_json = json.dumps(self.to_json(), indent=4, separators=(", ", ": "))
         with open(path, "w") as file:
             file.write(neem_json)
-
-
-
-
-

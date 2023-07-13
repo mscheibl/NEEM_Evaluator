@@ -1,5 +1,6 @@
 from .knowrob import *
 from .mongo import *
+from .helper import time_ordered_actions
 from typing import Dict, List, Iterable
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -68,9 +69,27 @@ class NeemObject:
         return obj_json
 
     def get_tfs_during_action(self, action) -> Iterable:
-        return tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600),
+        if self._tf:
+            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600),
                                          "$lt": datetime.fromtimestamp(action.end - 3600)},
-                        "child_frame_id": self.link_name})
+                        "child_frame_id": self.link_name}))
+        else:
+            start_index = None
+            end_index = None
+            i = 0
+            if not self._tf_list:
+                return []
+            for transform in self._tf_list:
+                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start:
+                    start_index = i
+                print(action.end)
+                print(datetime.fromisoformat(transform["header"]["stamp"]).timestamp())
+                if action.end <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
+                    end_index = i
+                    print("-------------------------------------------")
+
+                i += 1
+            return self._tf_list[start_index: end_index + 1]
 
 
 class Action:
@@ -80,6 +99,9 @@ class Action:
         self.instance: str = instance
         self.start: int = 0
         self.end: int = 0
+        # Relative attributes are set by parent NEEM
+        self.relative_start = 0
+        self.relative_end = 0
         self.participants: List = []
         self.objects: List[NeemObject] = []
 
@@ -136,6 +158,11 @@ class Neem:
             self.action_list: List[Action] = []
             rospy.logdebug("Loading from Knowrob")
             self._load_actions()
+        self.action_list: List[Action] = time_ordered_actions(self.action_list)
+        self.start: int = self.action_list[0].start
+        self.end: int = self.action_list[-1].end
+
+        self._set_relative_times()
 
     def _load_actions(self) -> None:
         actions = get_all_actions_in_neem()
@@ -144,6 +171,11 @@ class Neem:
             for act_ins in action_instances:
                 self.actions[name].append(Action(name, act_ins))
                 self.action_list.append(Action(name, act_ins))
+
+    def _set_relative_times(self):
+        for act in self.action_list:
+            act.relative_start = act.start - self.start
+            act.relative_end = act.end - self.start
 
     def get_all_objects_in_neem(self) -> List[NeemObject]:
         objects = set()
@@ -165,11 +197,16 @@ class Neem:
         d = json.loads(neem_json)
         self.name = d["name"]
         self.action_list = []
+        self.actions = {}
         for action in d["actions"]:
             objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in
                        action["objects"]]
             self.action_list.append(
                 Action(action["name"], action["instance"], action["start"], action["end"], objects))
+            if action["name"] not in self.actions.keys():
+                self.actions[action["name"]] = [Action(action["name"], action["instance"], action["start"], action["end"], objects)]
+            else:
+                self.actions[action["name"]].append(Action(action["name"], action["instance"], action["start"], action["end"], objects))
 
     def save(self, path: str) -> None:
         neem_json = json.dumps(self.to_json(), indent=4, separators=(", ", ": "))

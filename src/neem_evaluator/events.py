@@ -1,4 +1,5 @@
-from .knowrob import  *
+from .knowrob import *
+from .helper import *
 
 import datetime as dt
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ def plot_events():
 
     fig, ax = plt.subplots()
     ax.add_collection(bars)
-    ax.autoscale()
+    ax.autoscal
     # loc = mdates.MinuteLocator(byminute=[0, 15, 30, 45])
     # ax.xaxis.set_major_locator(loc)
     # ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(loc))
@@ -50,9 +51,13 @@ def plot_events():
     plt.show()
 
 
-def event_metric():
-    events = get_all_actions_in_neem()
-    intervals = get_event_intervals()
+def event_metric(neem1, neem2):
+    results = {}
+    results["co-appearance"] = co_appearance_of_events(neem1, neem2)
+    results["relative-distance"] = relative_distance_of_events(neem1, neem2)
+    results["time-ordered"] = [[act.name for act in neem1.action_list],
+                               [act.name for act in neem2.action_list]]
+    results["action-count"] = [event_count_of_same_type(neem1), event_count_of_same_type(neem2)]
+    return results
 
-    start_time = intervals[events["PhysicalTask"]]
 

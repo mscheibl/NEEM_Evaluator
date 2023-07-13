@@ -1,4 +1,7 @@
+from typing import Dict, Tuple, List
+
 import numpy as np
+from numpy.typing import ArrayLike
 import pymongo
 
 
@@ -133,44 +136,49 @@ def cluster_to_actions(cluster, seq_to_actions):
     return result
 
 
-def co_appearance_of_events(neem):
+def co_appearance_of_events(neem1, neem2) -> List[Tuple['Action', 'Action']]:
     appearance_pairs = []
-    for action in neem.action_list:
-        for action2 in neem.action_list:
-            if action2 == action:
-                continue
-            if action.start <= action2.start:
-                appearance_pairs.append((action, action2))
+    for action in neem1.action_list:
+        for action2 in neem2.action_list:
+            if action2.name == action.name:
+                if action.relative_start <= action2.relative_start:
+                    appearance_pairs.append((action, action2))
     return appearance_pairs
 
 
-def relative_distance_of_events(neem):
-    event_distances = event_start_and_end_pose(neem)
+def relative_distance_of_events(neem1, neem2) -> Dict[Tuple['Action', 'Action'], Tuple[ArrayLike, ArrayLike]]:
+    event_distances1 = event_start_and_end_pose(neem1)
+    event_distances2 = event_start_and_end_pose(neem2)
     res = {}
-    for action, distances in event_distances.items():
-        for action2, distances2 in event_distances.items():
-            if action == action2:
-                continue
-            res[(action, action2)] = (np.absolute(distances[0] - distances2[0]), np.absolute(distances[1] - distances2[1]))
+    for action, distances in event_distances1.items():
+        for action2, distances2 in event_distances2.items():
+            if action.name == action2.name:
+                res[(action, action2)] = (np.absolute(distances[0] - distances2[0]), np.absolute(distances[1] - distances2[1]))
     return res
 
 
-def event_start_and_end_pose(neem):
+def event_start_and_end_pose(neem) -> Dict['Action', Tuple[ArrayLike, ArrayLike]]:
     res = {}
     for action in neem.action_list:
         first_positions = []
         last_positions = []
         for obj in action.objects:
             tfs = obj.get_tfs_during_action(action)
-            if not tfs or docs_in_cursor(tfs) == 0:
+            if not tfs:
                 continue
-
-            first_positions.append(np.array(list(next(tfs)["transform"]["translation"].values())))
-            # Since we started iterating the cursor we need a new one
-            tfs = obj.get_tfs_during_action(action)
-            tfs.sort("header.seq", pymongo.DESCENDING)
-            last_positions.append(np.array(list(next(tfs)["transform"]["translation"].values())))
+            first_positions.append(np.array(list(tfs[0]["transform"]["translation"].values())))
+            last_positions.append(np.array(list(tfs[-1]["transform"]["translation"].values())))
 
         res[action] = (np.mean(first_positions, axis=0), np.mean(last_positions, axis=0))
+    return res
 
+
+def time_ordered_actions(actions):
+    return sorted(actions, key=lambda act: act.start)
+
+
+def event_count_of_same_type(neem):
+    res = {}
+    for action_name, actions in neem.actions.items():
+        res[action_name] = len(actions)
     return res

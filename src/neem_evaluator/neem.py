@@ -74,19 +74,18 @@ class NeemObject:
                                          "$lt": datetime.fromtimestamp(action.end - 3600)},
                         "child_frame_id": self.link_name}))
         else:
-            start_index = None
-            end_index = None
+            start_index = 0
+            end_index = 0
             i = 0
             if not self._tf_list:
                 return []
             for transform in self._tf_list:
                 if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start:
                     start_index = i
-                print(action.end)
-                print(datetime.fromisoformat(transform["header"]["stamp"]).timestamp())
+                    # print(f"Start: {start_index}")
                 if action.end <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
                     end_index = i
-                    print("-------------------------------------------")
+                    # print(f"End: {end_index}")
 
                 i += 1
             return self._tf_list[start_index: end_index + 1]

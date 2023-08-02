@@ -80,10 +80,10 @@ class NeemObject:
             if not self._tf_list:
                 return []
             for transform in self._tf_list:
-                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start:
+                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp()>= action.start - 3600:
                     start_index = i
                     # print(f"Start: {start_index}")
-                if action.end <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
+                if action.end -3600 <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
                     end_index = i
                     # print(f"End: {end_index}")
 

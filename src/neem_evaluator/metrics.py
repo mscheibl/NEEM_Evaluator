@@ -28,7 +28,7 @@ def min_max_metric(tfs, threashold):
     return x_t, y_t, z_t
 
 
-def vel_metric(tfs, threashold, return_seq=False):
+def vel_metric(tfs, threashold=1, return_seq=False):
     """
     Main metric that is used to evaluate trajectories. The metric tries to detect spikes in the trajectory and thus is
     able to tell how 'smooth' the motion is. Optionally all sequence numbers where the metric detected a spike can be
@@ -39,9 +39,9 @@ def vel_metric(tfs, threashold, return_seq=False):
     :param return_seq: If the sequence numbers that are a spike should be returned
     :return: The amount of times where the velocity was above the threshold and optionally the corresponding sequence numbers.
     """
-    if docs_in_cursor(tfs) == 0:
-        print("No TFs in given Cursor")
-        return
+    # if len(tfs) == 0:
+    #     print("No TFs in given Cursor")
+    #     return
     result = 0
     result_seqs = []
 
@@ -71,6 +71,7 @@ def vel_metric(tfs, threashold, return_seq=False):
             result_seqs.append([index[1] for index in chk])
 
     if return_seq:
+        print(result_seqs)
         result_seqs = np.unique(np.array(result_seqs).flatten())
         return result, result_seqs
     else:

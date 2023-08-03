@@ -89,9 +89,11 @@ def tfs_to_velocity(coll, chunks=1):
     velocities = []
     tfs = []
     for i in range(chunks+1):
-        tfs.append(coll.next())
+        tfs.append(next(coll, None))
 
-    while coll.alive:
+    # while coll.alive:
+    while t := next(coll, False):
+        #tfs.append(t)
         for i in range(len(tfs) - 1):
             first_vector = np.array(transform_to_translation(tfs[i]["transform"]))
             second_vector = np.array(transform_to_translation(tfs[i + 1]["transform"]))
@@ -99,7 +101,8 @@ def tfs_to_velocity(coll, chunks=1):
         yield velocities
         velocities = []
         tfs.remove(tfs[0])
-        tfs.append(coll.next())
+        #tfs.append(coll.next())
+        tfs.append(t)
 
 
 def cluster_sequences(sequences):

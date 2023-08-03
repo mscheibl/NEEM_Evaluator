@@ -1,3 +1,6 @@
+# used for delayed evaluation of typing until python 3.11 becomes mainstream
+from __future__ import annotations
+
 from .knowrob import *
 from .mongo import *
 from .helper import time_ordered_actions
@@ -12,7 +15,7 @@ import rospy
 
 class NeemObject:
 
-    def __init__(self, name: str, instance: str, link_name: str = None, tf_list: List = None):
+    def __init__(self, name: str, instance: str, link_name: str = None, tf_list: List = None, action: Action = None):
         """
         Representing an object that is part of a NEEM
 
@@ -29,6 +32,7 @@ class NeemObject:
             self._tf_list = tf_list
         else:
             self._load_tf()
+        self.action = action
 
     def _load_tf(self) -> None:
         if self.link_name:
@@ -40,7 +44,7 @@ class NeemObject:
         if self._tf:
             return copy.copy(self._tf)
         elif self._tf_list:
-            return (t for t in self._tf_list)
+            return lambda x : for t in self._tf_list: yield t
         else:
             return []
 
@@ -70,8 +74,8 @@ class NeemObject:
 
     def get_tfs_during_action(self, action) -> Iterable:
         if self._tf:
-            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600),
-                                         "$lt": datetime.fromtimestamp(action.end - 3600)},
+            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - self.action.neem.action_tf_offset),
+                                         "$lt": datetime.fromtimestamp(action.end - self.action.neem.action_tf_offset)},
                         "child_frame_id": self.link_name}))
         else:
             start_index = 0
@@ -80,10 +84,10 @@ class NeemObject:
             if not self._tf_list:
                 return []
             for transform in self._tf_list:
-                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp()>= action.start - 3600:
+                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start - self.action.neem.action_tf_offset:
                     start_index = i
                     # print(f"Start: {start_index}")
-                if action.end -3600 <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
+                if action.end - self.action.neem.action_tf_offset <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
                     end_index = i
                     # print(f"End: {end_index}")
 
@@ -93,7 +97,8 @@ class NeemObject:
 
 class Action:
 
-    def __init__(self, name: str, instance: str, start: int = None, end: int = None, objects: List[NeemObject] = None):
+    def __init__(self, name: str, instance: str, start: int = None, end: int = None, objects: List[NeemObject] = None,
+                 neem: Neem = None):
         self.name: str = name
         self.instance: str = instance
         self.start: int = 0
@@ -115,6 +120,10 @@ class Action:
         else:
             self._load_objects()
 
+        self.neem = neem
+        for obj in self.objects:
+            obj.action = self
+
     def __repr__(self):
         skip_attributes = ["participants", "objects"]
         return self.__class__.__qualname__ + f"(" + ', '.join(
@@ -130,7 +139,7 @@ class Action:
         objects = get_objects_for_action(self.instance)
         for obj in objects:
             name = obj.split('#')[1]
-            self.objects.append(NeemObject(name, obj))
+            self.objects.append(NeemObject(name, obj, action=self))
 
     def get_all_objects_for_action(self) -> List[NeemObject]:
         return self.objects
@@ -163,13 +172,23 @@ class Neem:
 
         self._set_relative_times()
 
+        self._calculate_action_tf_offset()
+
+    def _calculate_action_tf_offset(self):
+        first_tf = list(self.action_list[0].objects[1].get_tfs())[0]
+        if type(first_tf["header"]["stamp"]) == datetime:
+            first_tf_timestamp = first_tf["header"]["stamp"].timestamp()
+        else:
+            first_tf_timestamp = datetime.fromisoformat(first_tf["header"]["stamp"]).timestamp()
+        self.action_tf_offset = abs(self.start - first_tf_timestamp)
+
     def _load_actions(self) -> None:
         actions = get_all_actions_in_neem()
         for name, action_instances in actions.items():
             self.actions[name] = []
             for act_ins in action_instances:
-                self.actions[name].append(Action(name, act_ins))
-                self.action_list.append(Action(name, act_ins))
+                self.actions[name].append(Action(name, act_ins, neem=self))
+                self.action_list.append(Action(name, act_ins, neem=self))
 
     def _set_relative_times(self):
         for act in self.action_list:
@@ -178,9 +197,12 @@ class Neem:
 
     def get_all_objects_in_neem(self) -> List[NeemObject]:
         objects = set()
+        instances = []
         for act in self.action_list:
             for obj in act.objects:
-                objects.add(obj)
+                if obj.instance not in instances:
+                    objects.add(obj)
+                    instances.append(obj.instance)
         return list(objects)
 
     def get_all_actions_in_neem(self) -> List[Action]:
@@ -201,11 +223,11 @@ class Neem:
             objects = [NeemObject(obj["name"], obj["instance"], obj["link_name"], obj["tf_list"]) for obj in
                        action["objects"]]
             self.action_list.append(
-                Action(action["name"], action["instance"], action["start"], action["end"], objects))
+                Action(action["name"], action["instance"], action["start"], action["end"], objects, neem=self))
             if action["name"] not in self.actions.keys():
-                self.actions[action["name"]] = [Action(action["name"], action["instance"], action["start"], action["end"], objects)]
+                self.actions[action["name"]] = [Action(action["name"], action["instance"], action["start"], action["end"], objects, neem=self)]
             else:
-                self.actions[action["name"]].append(Action(action["name"], action["instance"], action["start"], action["end"], objects))
+                self.actions[action["name"]].append(Action(action["name"], action["instance"], action["start"], action["end"], objects, neem=self))
 
     def save(self, path: str) -> None:
         neem_json = json.dumps(self.to_json(), indent=4, separators=(", ", ": "))

@@ -25,7 +25,7 @@ class NeemObject:
         self.name: str = name
         self.instance: str = instance
         self._tf = None
-        self._tf_list: List = None
+        self._tf_list: List = []
         self.link_name: str = link_name if link_name else get_link_name_for_object(self.instance)
 
         if tf_list:
@@ -34,30 +34,52 @@ class NeemObject:
             self._load_tf()
         self.action = action
 
+    def __repr__(self):
+        skip_attributes = ["_tf", "_tf_list", "action"]
+        return self.__class__.__qualname__ + f"(" + ', '.join(
+            [f"{key}={value}" if key not in skip_attributes else f"{key}=..." for key, value in
+             self.__dict__.items()]) + ")" + "\n"
+
     def _load_tf(self) -> None:
+        """
+        Load TF cursor for this object from the Mongo DB.
+        """
         if self.link_name:
             self._tf = get_tf_for_object(self.link_name)
         else:
             rospy.loginfo(f"NEEM Object: {self.name} has no tf_link_name therefore no tf pointer could be loaded")
 
     def get_tfs(self) -> Iterable:
+        """
+        Method to get the TF generator for this NEEMObject, for a NEEM that is currently in knowrob this is a MongoDB
+        cursor. For a NEEM from a json file this is a Python Generator. Both of these behave like a generator object.
+
+        :return: A generator for the TF frames of this NEEMObject
+        """
         if self._tf:
             return copy.copy(self._tf)
-        elif self._tf_list:
-            return lambda x : for t in self._tf_list: yield t
         else:
-            return []
+            # return lambda x: for t in self._tf_list: yield t
+            return (t for t in self._tf_list)
+        # else:
+        #     return []
 
     def __iter__(self):
         pass
 
     def _json_to_mongo(self) -> None:
+        """
+        Converts the datatypes which are used in a json file to the ones used in Mongo for consistency.
+        """
         for tf in self._tf_list:
             tf["_id"] = ObjectId(tf["_id"])
             tf["header"]["stamp"] = datetime.fromisoformat(tf["header"]["stamp"])
             tf["__recorded"] = datetime.fromisoformat(tf["__recorded"])
 
-    def _clean_tf_for_json(self) -> None:
+    def _clean_tf_for_json(self) -> Iterable:
+        """
+        Converts the datatypes used in MongoDB to ones used in json to save this Object as a json.
+        """
         for tf in self.get_tfs():
             tf["_id"] = str(tf["_id"])
             tf["header"]["stamp"] = str(tf["header"]["stamp"])
@@ -65,6 +87,11 @@ class NeemObject:
             yield tf
 
     def to_json(self) -> Dict:
+        """
+        Converts this Object to a dictionary for serialization in json
+
+        :return: A dictionary with all information in this Object
+        """
         obj_json = {"name": self.name,
                     "instance": self.instance,
                     "link_name": self.link_name,
@@ -73,9 +100,16 @@ class NeemObject:
         return obj_json
 
     def get_tfs_during_action(self, action) -> Iterable:
+        """
+        Returns the TFs for this Object during an action. This method also takes the offset between TFs and actions into
+        account.
+
+        :param action: Action during which the TF should be returned
+        :return:
+        """
         if self._tf:
             return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - self.action.neem.action_tf_offset),
-                                         "$lt": datetime.fromtimestamp(action.end - self.action.neem.action_tf_offset)},
+                                                  "$lt": datetime.fromtimestamp(action.end - self.action.neem.action_tf_offset)},
                         "child_frame_id": self.link_name}))
         else:
             start_index = 0
@@ -96,6 +130,19 @@ class NeemObject:
 
 
 class Action:
+    """
+    Represents an action during a NEEM. An action consists of a number of informations, these are:
+
+        * A human-readable name
+        * The knowrob instance name
+        * A start time (as timestamp)
+        * An end time (as timestamp)
+        * A relative start time, relative to start of NEEM
+        * A relative end time, relative to start of NEEM
+        * A list of participants
+        * A list of Objects
+        * A reference to the NEEM
+    """
 
     def __init__(self, name: str, instance: str, start: int = None, end: int = None, objects: List[NeemObject] = None,
                  neem: Neem = None):
@@ -131,20 +178,34 @@ class Action:
              self.__dict__.items()]) + ")"
 
     def _load_intervals(self) -> None:
+        """
+        Loads the start and end time for this action.
+        """
         intervals = get_event_intervals()
         self.start = intervals[self.instance]['start']
         self.end = intervals[self.instance]['end']
 
     def _load_objects(self) -> None:
+        """
+        Loads all objects that are participating in this action.
+        """
         objects = get_objects_for_action(self.instance)
         for obj in objects:
             name = obj.split('#')[1]
             self.objects.append(NeemObject(name, obj, action=self))
 
     def get_all_objects_for_action(self) -> List[NeemObject]:
+        """
+        Returns all objects that are participating in this action
+        """
         return self.objects
 
     def to_json(self) -> Dict:
+        """
+        Creates a dictionary for this Action for the serialization as json
+
+        :return: A dictionary with all information in this Action
+        """
         action_json = {"name": self.name,
                        "instance": self.instance,
                        "start": self.start,
@@ -155,6 +216,15 @@ class Action:
 
 
 class Neem:
+    """
+    Representation of a whole NEEM. This class contains all relevant information of a NEEM, these are:
+
+        * A name
+        * A list of all actions
+        * A start time
+        * An end time
+        * An action tf time offset.
+    """
 
     def __init__(self, json_path: str = None):
         if json_path:
@@ -175,6 +245,10 @@ class Neem:
         self._calculate_action_tf_offset()
 
     def _calculate_action_tf_offset(self):
+        """
+        Calculates the time difference between the first action and the first TF in this neem. The offset is used to get
+        trajectories for objects during actions.
+        """
         first_tf = list(self.action_list[0].objects[1].get_tfs())[0]
         if type(first_tf["header"]["stamp"]) == datetime:
             first_tf_timestamp = first_tf["header"]["stamp"].timestamp()
@@ -183,6 +257,9 @@ class Neem:
         self.action_tf_offset = abs(self.start - first_tf_timestamp)
 
     def _load_actions(self) -> None:
+        """
+        Gets the actions for this NEEM from knowrob and creates instances of Action classes for them
+        """
         actions = get_all_actions_in_neem()
         for name, action_instances in actions.items():
             self.actions[name] = []
@@ -191,11 +268,20 @@ class Neem:
                 self.action_list.append(Action(name, act_ins, neem=self))
 
     def _set_relative_times(self):
+        """
+        Calculates the relative time for each Action. The realative time is the start and end time for an Action
+        relative to the NEEM start.
+        """
         for act in self.action_list:
             act.relative_start = act.start - self.start
             act.relative_end = act.end - self.start
 
     def get_all_objects_in_neem(self) -> List[NeemObject]:
+        """
+        Returns a list with all objects in this NEEM
+
+        :return: A list with the unique objects in this neem
+        """
         objects = set()
         instances = []
         for act in self.action_list:
@@ -206,15 +292,30 @@ class Neem:
         return list(objects)
 
     def get_all_actions_in_neem(self) -> List[Action]:
+        """
+        Returns a list with all actions in this NEEM
+
+        :return: All actions in this neem
+        """
         return self.action_list
 
     def to_json(self) -> Dict:
+        """
+        Creates a dictionary of this NEEM for serialization in json.
+
+        :return: A dictionary containing all information of this neem
+        """
         neem_json = {"name": self.name,
                      "actions": [act.to_json() for act in self.action_list]}
 
         return neem_json
 
     def from_json(self, neem_json: str) -> None:
+        """
+        Creates an instance of the NEEM class from a json file
+
+        :param neem_json: Path to the json containing the neem infos
+        """
         d = json.loads(neem_json)
         self.name = d["name"]
         self.action_list = []
@@ -230,6 +331,11 @@ class Neem:
                 self.actions[action["name"]].append(Action(action["name"], action["instance"], action["start"], action["end"], objects, neem=self))
 
     def save(self, path: str) -> None:
+        """
+        Saves this NEEM as a json file.
+
+        :param path: Path to where the neem should be saved.
+        """
         neem_json = json.dumps(self.to_json(), indent=4, separators=(", ", ": "))
         with open(path, "w") as file:
             file.write(neem_json)

@@ -5,6 +5,7 @@ from numpy.typing import ArrayLike
 import pymongo
 
 
+
 def transform_to_list(transform):
     """
     Extracts the xyz and xyzw values from a transform and returns them as two lists
@@ -140,6 +141,14 @@ def cluster_to_actions(cluster, seq_to_actions):
 
 
 def co_appearance_of_events(neem1, neem2) -> List[Tuple['Action', 'Action']]:
+    """
+    Checks if events with the same name appeared at the same time in the neem. This is checked by comparing the
+    relative starting time of both events.
+
+    :param neem1: First neem from which the events should be compared
+    :param neem2: Second neem which events should be compared to the first one
+    :return: A List with tuples of events that appear at the same time.
+    """
     appearance_pairs = []
     for action in neem1.action_list:
         for action2 in neem2.action_list:
@@ -150,6 +159,13 @@ def co_appearance_of_events(neem1, neem2) -> List[Tuple['Action', 'Action']]:
 
 
 def relative_distance_of_events(neem1, neem2) -> Dict[Tuple['Action', 'Action'], Tuple[ArrayLike, ArrayLike]]:
+    """
+    Calculates the relative distance of events of the same type between two events.
+
+    :param neem1: The first neem to compare to
+    :param neem2: The second neem to compare
+    :return: A dictionary with a Tuple of events as key and the relative start and end poses as values
+    """
     event_distances1 = event_start_and_end_pose(neem1)
     event_distances2 = event_start_and_end_pose(neem2)
     res = {}
@@ -161,6 +177,14 @@ def relative_distance_of_events(neem1, neem2) -> Dict[Tuple['Action', 'Action'],
 
 
 def event_start_and_end_pose(neem) -> Dict['Action', Tuple[ArrayLike, ArrayLike]]:
+    """
+    Calculates the start and end poses of an event. This uses all objects that are part of this event, then gets the
+    TF during the event for this object and takes the first and last TF. Lastly, the average over all TFs for all objects
+    is use.
+
+    :param neem: Neem for which the event start and end times should be calculated.
+    :return: A dictionary with the action as key and the averaged start and end positions as values.
+    """
     res = {}
     for action in neem.action_list:
         first_positions = []
@@ -176,11 +200,23 @@ def event_start_and_end_pose(neem) -> Dict['Action', Tuple[ArrayLike, ArrayLike]
     return res
 
 
-def time_ordered_actions(actions):
+def time_ordered_actions(actions: List['Action']) -> List['Action']:
+    """
+    Sorts the given actions by their start time.
+
+    :param actions:
+    :return:
+    """
     return sorted(actions, key=lambda act: act.start)
 
 
-def event_count_of_same_type(neem):
+def event_count_of_same_type(neem: "NEEM") -> Dict['Action', int]:
+    """
+    Counts all events of the same type.
+
+    :param neem: NEEM for which the events should be counted
+    :return: A dictionary with the action as input and the amout how often it occyurs as calue
+    """
     res = {}
     for action_name, actions in neem.actions.items():
         res[action_name] = len(actions)

@@ -64,12 +64,12 @@ class BulletWorld:
         self.vis_axis: Object = None
         self.coll_callbacks: Dict[Tuple[Object, Object], Tuple[Callable, Callable]] = {}
         self.data_directory: List[str] = [os.path.dirname(__file__) + "/../../resources"]
-        self.shadow_world: BulletWorld = BulletWorld("DIRECT", True) if not is_shadow_world else None
-        self.world_sync: World_Sync = World_Sync(self, self.shadow_world) if not is_shadow_world else None
+        # self.shadow_world: BulletWorld = BulletWorld("DIRECT", True) if not is_shadow_world else None
+        # self.world_sync: World_Sync = World_Sync(self, self.shadow_world) if not is_shadow_world else None
         self.is_shadow_world: bool = is_shadow_world
         self.trajectory_ids = []
-        if not is_shadow_world:
-            self.world_sync.start()
+        # if not is_shadow_world:
+        #     self.world_sync.start()
 
         # Some default settings
         self.set_gravity([0, 0, -9.8])
@@ -121,16 +121,15 @@ class BulletWorld:
     def exit(self) -> None:
         # True if this is NOT the shadow world since it has a reference to the
         # Shadow world
-        if self.shadow_world:
-            self.world_sync.terminate = True
-            self.world_sync.join()
-            self.shadow_world.exit()
+        # if self.shadow_world:
+        #     self.world_sync.terminate = True
+        #     self.world_sync.join()
+        #     self.shadow_world.exit()
         p.disconnect(self.client_id)
         if self._gui_thread:
             self._gui_thread.join()
         if BulletWorld.current_bullet_world == self:
             BulletWorld.current_bullet_world = None
-
 
     def save_state(self) -> int:
         """
@@ -401,8 +400,8 @@ class Object:
         self.cids: Dict[Object, int] = {}
         self.world.objects.append(self)
         # This means "world" is not the shadow world since it has a reference to a shadow world
-        if self.world.shadow_world != None:
-            self.world.world_sync.add_obj_queue.put([name, type, path, position, orientation, self.world.shadow_world, color, self])
+        # if self.world.shadow_world != None:
+        #     self.world.world_sync.add_obj_queue.put([name, type, path, position, orientation, self.world.shadow_world, color, self])
 
         if re.search("[a-zA-Z0-9].urdf", self.path):
             with open(self.path, mode="r") as f:

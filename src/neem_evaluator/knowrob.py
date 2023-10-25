@@ -9,7 +9,7 @@ else:
     rospy.logerr("No Knowrob services found")
     raise ImportWarning("No Knowrob services found")
 
-#rospy.init_node("NEEM_Evaluator")
+rospy.init_node("NEEM_Evaluator")
 
 
 def remember_neem(path):
@@ -123,7 +123,7 @@ def get_all_tf_for_action(action):
         if link_name:
             # -3600 is to compensate for difference in intervals of knowrob and TFs
             result[obj] = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"] - 3600),
-                                                    "$lt": datetime.fromtimestamp(intervals["end"]- 3600)}, "child_frame_id": link_name})
+                                                    "$lt": datetime.fromtimestamp(intervals["end"] - 3600)}, "child_frame_id": link_name})
         else:
             continue
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from .knowrob import *
 from .mongo import *
 from .helper import time_ordered_actions
-from typing import Dict, List, Iterable
+from typing import Dict, List, Iterable, Union
 from bson.objectid import ObjectId
 from datetime import datetime
 
@@ -33,6 +33,7 @@ class NeemObject:
         else:
             self._load_tf()
         self.action = action
+        self._calculate_start()
 
     def __repr__(self):
         skip_attributes = ["_tf", "_tf_list", "action"]
@@ -128,6 +129,14 @@ class NeemObject:
                 i += 1
             return self._tf_list[start_index: end_index + 1]
 
+    def _calculate_start(self):
+        if first_tf := next(self.get_tfs(), False):
+            # first_tf = next(self.get_tfs())
+            stamp = first_tf["header"]["stamp"]
+            self.start = stamp.timestamp()
+        else:
+            self.start = 0
+
 
 class Action:
     """
@@ -191,7 +200,10 @@ class Action:
         """
         objects = get_objects_for_action(self.instance)
         for obj in objects:
-            name = obj.split('#')[1]
+            if '#' in obj:
+                name = obj.split('#')[1]
+            else:
+                name = obj
             self.objects.append(NeemObject(name, obj, action=self))
 
     def get_all_objects_for_action(self) -> List[NeemObject]:
@@ -242,7 +254,7 @@ class Neem:
 
         self._set_relative_times()
 
-        self._calculate_action_tf_offset()
+        # self._calculate_action_tf_offset()
 
     def _calculate_action_tf_offset(self):
         """
@@ -290,6 +302,20 @@ class Neem:
                     objects.add(obj)
                     instances.append(obj.instance)
         return list(objects)
+
+    def get_objects_by_name(self, name: str) -> Union[NeemObject, List[NeemObject]]:
+        """
+        Finds all objects that fit the given name and returns it. If there is only one object with the name the single
+        object will be returned, if more than one object has this name a list of all objects will be returned.
+
+        :param name: Name of the object that should be found
+        :return: The object with the name if there is only one and a list of all objects with the name if there are more
+        """
+        fitting_object = list(filter(lambda obj: obj.name == name, self.get_all_objects_in_neem()))
+        if len(fitting_object) == 1:
+            return fitting_object[0]
+        else:
+            return fitting_object
 
     def get_all_actions_in_neem(self) -> List[Action]:
         """

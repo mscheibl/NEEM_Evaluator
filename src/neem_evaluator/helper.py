@@ -221,3 +221,36 @@ def event_count_of_same_type(neem: "NEEM") -> Dict['Action', int]:
     for action_name, actions in neem.actions.items():
         res[action_name] = len(actions)
     return res
+
+
+def total_execution_time(neem: 'Neem') -> float:
+    """
+    Calculates the total time taken for the actions in this neem. The time is calculated by taking the earliest start time
+    and latest end time.
+
+    :param neem: NEEM for which the total execution time should be calculated
+    :return: Time taken for the actions in the Neem
+    """
+    start = neem.action_list[0].start
+    end = sorted([act.end for act in neem.action_list])[-1]
+    return end - start
+
+
+def failed_grasping_attempts(neem: 'Nemm') -> int:
+    """
+    Measures the number of grasping attempts that failed. A failed grasp attempt is considered when a grasping event is
+    ended without a pouring event stating.
+
+    :param neem: The neem for which the failed grasps should be measured
+    :return: The number of failed grasp attempts
+    """
+    grasping_actions = list(filter(lambda act: act.name == "Grasping", neem.action_list))
+    pouring_actions = list(filter(lambda act: act.name == "Pouring", neem.action_list))[0]
+    failed_attempts = 0
+    for grasping_act in grasping_actions:
+        if grasping_act.end < pouring_actions.start:
+            failed_attempts += 1
+    return failed_attempts
+
+
+

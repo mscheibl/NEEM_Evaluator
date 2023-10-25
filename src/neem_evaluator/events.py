@@ -28,8 +28,14 @@ def plot_events(neem) -> None:
     """
     # events = get_all_actions_in_neem()
     events = neem.action_list
-    rows = {"Reaching": 1, "Grasping": 2, "Pouring": 3, "PhysicalTask": 4}
-    colormapping = {"Reaching": "C0", "Grasping": "C1", "Pouring": "C2", "PhysicalTask": "C3"}
+    event_names = list(set([act.name for act in neem.action_list]))
+    print(event_names)
+    rows = dict(zip(event_names, list(range(0, len(event_names)))))
+
+    #rows = {"Reaching": 1, "Grasping": 2, "Pouring": 3, "PhysicalTask": 4}
+    color = ["C" + str(rows[event_name]) for event_name in rows.keys()]
+    colormapping = dict(zip(event_names, color))
+    # colormapping = {"Reaching": "C0", "Grasping": "C1", "Pouring": "C2", "PhysicalTask": "C3"}
     # all_intervals = get_event_intervals()
 
     verts = []
@@ -53,8 +59,10 @@ def plot_events(neem) -> None:
     # ax.xaxis.set_major_locator(loc)
     # ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(loc))
 
-    ax.set_yticks([1, 2, 3, 4])
-    ax.set_yticklabels(["Reaching", "Grasping", "Pouring", "PhysicalTask"])
+    #ax.set_yticks([1, 2, 3, 4])
+    #ax.set_yticklabels(["Reaching", "Grasping", "Pouring", "PhysicalTask"])
+    ax.set_yticks(list(range(0, len(event_names))))
+    ax.set_yticklabels(event_names)
     plt.show()
 
 
@@ -68,6 +76,7 @@ def event_metric(neem1, neem2):
         * relative distance of events
         * Events ordered by time
         * the count for each event type
+        * Total time taken for each NEEM
 
     :param neem1: The first NEEM to compare
     :param neem2: The second NEEM to compare
@@ -79,6 +88,8 @@ def event_metric(neem1, neem2):
     results["time-ordered"] = [[act.name for act in neem1.action_list],
                                [act.name for act in neem2.action_list]]
     results["action-count"] = [event_count_of_same_type(neem1), event_count_of_same_type(neem2)]
+    results["execution-time"] = [total_execution_time(neem1), total_execution_time(neem2)]
+    results["grasping-attempts"] = [failed_grasping_attempts(neem1), failed_grasping_attempts(neem2)]
     return results
 
 

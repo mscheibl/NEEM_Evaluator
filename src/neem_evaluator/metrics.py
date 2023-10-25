@@ -17,14 +17,14 @@ def min_max_metric(tfs, threashold):
         z_s = np.array([transform_to_translation(x["transform"])[2] for x in chk])
 
         if abs(max(x_s) - min(x_s)) > threashold:
-            #print("Threashold X", abs(max(x_s) - min(x_s)))
-            x_t +=1
+            # print("Threashold X", abs(max(x_s) - min(x_s)))
+            x_t += 1
         if abs(max(y_s) - min(y_s)) > threashold:
-            #print("Threashold Y", abs(max(y_s) - min(y_s)))
-            y_t+=1
+            # print("Threashold Y", abs(max(y_s) - min(y_s)))
+            y_t += 1
         if abs(max(z_s) - min(z_s)) > threashold:
-            #print("Threashold Z", abs(max(z_s) - min(z_s)))
-            z_t+=1
+            # print("Threashold Z", abs(max(z_s) - min(z_s)))
+            z_t += 1
     return x_t, y_t, z_t
 
 
@@ -55,7 +55,7 @@ def vel_metric(tfs, threashold=1, return_seq=False):
                 v = np.array([0, 0, 0])
             else:
                 v = vel / norm
-            #v = vel
+            # v = vel
             diff = v - prev
 
             diffs.append(diff)
@@ -65,15 +65,13 @@ def vel_metric(tfs, threashold=1, return_seq=False):
         # print(f"{i} max_dif: {max_dif}")
         # print(f"{i} min_dif: {min_dif}")
         # print()
-        i+=1
+        i += 1
         if max_dif > threashold:
             result += 1
             result_seqs.append([index[1] for index in chk])
 
     if return_seq:
-        print(result_seqs)
         result_seqs = np.unique(np.array(result_seqs).flatten())
         return result, result_seqs
     else:
         return result
-

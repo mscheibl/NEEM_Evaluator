@@ -26,7 +26,7 @@ def get_tf_for_object(name):
     return tf.find({"child_frame_id": name})
 
 
-def restore(path):
+def restore(path: str):
     """
     MongoDB Restore
     >>> DB_BACKUP_DIR = '/path/backups/'

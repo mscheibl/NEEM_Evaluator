@@ -7,7 +7,7 @@ import matplotlib.dates as mdates
 from matplotlib.collections import PolyCollection
 
 
-def pre_process_events(events) -> Dict:
+def pre_process_events(events: dict) -> Dict:
     """
     Maps event instances to their human-readable counterpart. Not really used since the new NEEM structure
     :param events:
@@ -20,7 +20,7 @@ def pre_process_events(events) -> Dict:
     return result
 
 
-def plot_events(neem) -> None:
+def plot_events(neem: 'NEEM') -> None:
     """
     Code from here: https://stackoverflow.com/questions/51505291/timeline-bar-graph-using-python-and-matplotlib
     Plots actions in a neem on a time scale diagram
@@ -32,7 +32,7 @@ def plot_events(neem) -> None:
     print(event_names)
     rows = dict(zip(event_names, list(range(0, len(event_names)))))
 
-    #rows = {"Reaching": 1, "Grasping": 2, "Pouring": 3, "PhysicalTask": 4}
+    # rows = {"Reaching": 1, "Grasping": 2, "Pouring": 3, "PhysicalTask": 4}
     color = ["C" + str(rows[event_name]) for event_name in rows.keys()]
     colormapping = dict(zip(event_names, color))
     # colormapping = {"Reaching": "C0", "Grasping": "C1", "Pouring": "C2", "PhysicalTask": "C3"}
@@ -59,14 +59,14 @@ def plot_events(neem) -> None:
     # ax.xaxis.set_major_locator(loc)
     # ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(loc))
 
-    #ax.set_yticks([1, 2, 3, 4])
-    #ax.set_yticklabels(["Reaching", "Grasping", "Pouring", "PhysicalTask"])
+    # ax.set_yticks([1, 2, 3, 4])
+    # ax.set_yticklabels(["Reaching", "Grasping", "Pouring", "PhysicalTask"])
     ax.set_yticks(list(range(0, len(event_names))))
     ax.set_yticklabels(event_names)
     plt.show()
 
 
-def event_metric(neem1, neem2):
+def event_metric(neem1: 'NEEM', neem2: 'NEEM'):
     """
     Metric for events, this metric compares two NEEMs in a number of metrics and returns them as a dictionary. The idea
     is that there can not be one single metric for events therefore this works like an expert system. The different

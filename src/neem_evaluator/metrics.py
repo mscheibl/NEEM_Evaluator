@@ -4,6 +4,13 @@ from .helper import chunks, transform_to_translation, tfs_to_velocity, docs_in_c
 
 
 def min_max_metric(tfs, threashold):
+    """
+    First simple metric for evaluating trajectories
+
+    :param tfs: Courser of the TFs for the trajectory in MonogoDB
+    :param threashold: The threshold at which a metric should trigger
+    :return: The results for each dimension respectively
+    """
     if docs_in_cursor(tfs) == 0:
         print("No TFs in given Cursor")
         return

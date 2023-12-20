@@ -1,12 +1,11 @@
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Iterable
 
 import numpy as np
 from numpy.typing import ArrayLike
 import pymongo
 
 
-
-def transform_to_list(transform):
+def transform_to_list(transform: dict) -> List:
     """
     Extracts the xyz and xyzw values from a transform and returns them as two lists
 
@@ -23,7 +22,7 @@ def transform_to_list(transform):
     return [translation, rotation]
 
 
-def transform_to_translation(transform):
+def transform_to_translation(transform: dict) -> List:
     """
     Returns only the translation of the given transform as a list
 
@@ -33,7 +32,7 @@ def transform_to_translation(transform):
     return transform_to_list(transform)[0]
 
 
-def transform_to_rotation(transform):
+def transform_to_rotation(transform: dict) -> List:
     """
     Extracts the orientation of the given transformation and returns it as a list
 
@@ -43,9 +42,11 @@ def transform_to_rotation(transform):
     return transform_to_list(transform)[1]
 
 
-def next_n(coll, n: int):
+def next_n(coll: Iterable, n: int) -> List:
     """
     Returns the next n elements from the collection coll
+
+    :return: A list of the next n elements from the given collection, or all available elements if there are less then n
     """
     result = []
     i = 0
@@ -55,7 +56,7 @@ def next_n(coll, n: int):
     return result
 
 
-def chunks(coll, n):
+def chunks(coll: Iterable, n: int) -> List:
     """
     Generates chunks of size n from the given collection.
 
@@ -79,7 +80,7 @@ def docs_in_cursor(cursor):
     return coll.count_documents(cursor.explain()["queryPlanner"]["parsedQuery"])
 
 
-def tfs_to_velocity(coll, chunks=1):
+def tfs_to_velocity(coll: Iterable, chunks: int = 1):
     """
     Creates the velocities from a collection of TFs, the number of calulated velocities is number_of_tfs - 1
 
@@ -106,7 +107,7 @@ def tfs_to_velocity(coll, chunks=1):
         tfs.append(t)
 
 
-def cluster_sequences(sequences):
+def cluster_sequences(sequences: List) -> List:
     """
     Creates clusters of sequences, a cluster is any number of sequences with a distance with 1.
 
@@ -120,7 +121,7 @@ def cluster_sequences(sequences):
     return result
 
 
-def cluster_to_actions(cluster, seq_to_actions):
+def cluster_to_actions(cluster: List, seq_to_actions: dict) -> dict:
     """
     Matches clusters of sequences to actions that happened during the sequence.
 
@@ -140,7 +141,7 @@ def cluster_to_actions(cluster, seq_to_actions):
     return result
 
 
-def co_appearance_of_events(neem1, neem2) -> List[Tuple['Action', 'Action']]:
+def co_appearance_of_events(neem1: 'NEEM', neem2: 'NEEM') -> List[Tuple['Action', 'Action']]:
     """
     Checks if events with the same name appeared at the same time in the neem. This is checked by comparing the
     relative starting time of both events.
@@ -158,7 +159,7 @@ def co_appearance_of_events(neem1, neem2) -> List[Tuple['Action', 'Action']]:
     return appearance_pairs
 
 
-def relative_distance_of_events(neem1, neem2) -> Dict[Tuple['Action', 'Action'], Tuple[ArrayLike, ArrayLike]]:
+def relative_distance_of_events(neem1: 'NEEM', neem2: 'NEEM') -> Dict[Tuple['Action', 'Action'], Tuple[ArrayLike, ArrayLike]]:
     """
     Calculates the relative distance of events of the same type between two events.
 
@@ -176,7 +177,7 @@ def relative_distance_of_events(neem1, neem2) -> Dict[Tuple['Action', 'Action'],
     return res
 
 
-def event_start_and_end_pose(neem) -> Dict['Action', Tuple[ArrayLike, ArrayLike]]:
+def event_start_and_end_pose(neem: 'NEEM') -> Dict['Action', Tuple[ArrayLike, ArrayLike]]:
     """
     Calculates the start and end poses of an event. This uses all objects that are part of this event, then gets the
     TF during the event for this object and takes the first and last TF. Lastly, the average over all TFs for all objects

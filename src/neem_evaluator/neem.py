@@ -254,7 +254,7 @@ class Neem:
 
         self._set_relative_times()
 
-        # self._calculate_action_tf_offset()
+        self._calculate_action_tf_offset()
 
     def _calculate_action_tf_offset(self):
         """

@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 import rospy
 import rosservice
 from .mongo import restore, tf, get_tf_for_object
@@ -12,7 +14,7 @@ else:
 rospy.init_node("NEEM_Evaluator")
 
 
-def remember_neem(path):
+def remember_neem(path: str):
     """
     Loads the neem in the given path to knowrob
 
@@ -26,7 +28,7 @@ def remember_neem(path):
     #restore(path)
 
 
-def get_event_intervals():
+def get_event_intervals() -> Dict[str, Dict[str, int]]:
     """
     Returns the start and end times for all actions
 
@@ -36,11 +38,11 @@ def get_event_intervals():
     result = {}
     for interval in intervals["Times"]:
         result[interval[2]] = {"start": interval[0], "end": interval[1]}
-        #result.append({"event": interval[2], "start": interval[0], "end": interval[1]})
+        # result.append({"event": interval[2], "start": interval[0], "end": interval[1]})
     return result
 
 
-def get_all_actions_in_neem():
+def get_all_actions_in_neem() -> Dict[str, List]:
     """
     Returns a dictionary which maps all actions happening in this NEEM to the human-readable name of the action.
 
@@ -58,7 +60,7 @@ def get_all_actions_in_neem():
     return res
 
 
-def get_objects_for_action(action):
+def get_objects_for_action(action: str) -> List[str]:
     """
     Returns a list of objects which are part of the given action.
 
@@ -75,11 +77,11 @@ def get_objects_for_action(action):
     return act_to_obj[action]
 
 
-def get_actions_for_object():
+def get_actions_for_object() -> Dict[str, List[str]]:
     """
     Returns a dictionary which maps all available knowrob objetct instances to the actions which they are part of.
 
-    :return: A dict mapping objects to a list of actinos
+    :return: A dict mapping objects to a list of actions
     """
     all_actions = get_all_actions_in_neem()
     action_to_objects = {}
@@ -95,7 +97,7 @@ def get_actions_for_object():
     return object_to_actions
 
 
-def get_link_name_for_object(object):
+def get_link_name_for_object(object: str) -> str:
     """
     Returns the link name for a knowrob object instance.
 
@@ -108,12 +110,12 @@ def get_link_name_for_object(object):
         return link_name.split("#")[1]
 
 
-def get_all_tf_for_action(action):
+def get_all_tf_for_action(action: str) -> Dict[str, Dict]:
     """
     Get all TFs for objects that are part of the given action.
 
     :param action: Action as knowrob instance
-    :return: A dictioniary which maps the object that are part of the given action to a TF cursor
+    :return: A dictionary which maps the object that are part of the given action to a TF cursor
     """
     intervals = get_event_intervals()[action]
     objects = get_objects_for_action(action)
@@ -121,7 +123,10 @@ def get_all_tf_for_action(action):
     for obj in objects:
         link_name = get_link_name_for_object(obj)
         if link_name:
-            # -3600 is to compensate for difference in intervals of knowrob and TFs
+            # -3600 is to compensate for difference in intervals of knowrob and TFs, this is a problem between different
+            # formats the MongoDB uses datetime and Knowrob uses unix time stamps. While datetime takes the timezone and
+            # daylight saving time into account, Knowrob does not which creates a difference of 3600 or
+            # 7200 seconds (1 or 2 h) depending on summer or winter time.
             result[obj] = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"] - 3600),
                                                     "$lt": datetime.fromtimestamp(intervals["end"] - 3600)}, "child_frame_id": link_name})
         else:
@@ -130,9 +135,9 @@ def get_all_tf_for_action(action):
     return result
 
 
-def map_sequence_to_action(object):
+def map_sequence_to_action(object: str) -> Dict[int, str]:
     """
-    Mapps the sequences of the trajectory of the given object to the action that occurred during that sequence. The object
+    Maps the sequences of the trajectory of the given object to the action that occurred during that sequence. The object
     has to given as a knowrob object. The returned action is readable and not the specific instance.
 
     :param object: The knowrob object for which the trajectory should be mapped
@@ -155,7 +160,7 @@ def map_sequence_to_action(object):
     return seqs_to_action
 
 
-def get_object_for_link(link_name):
+def get_object_for_link(link_name: str) -> str:
     """
     Returns the knowrob object name for a link/TF name
 

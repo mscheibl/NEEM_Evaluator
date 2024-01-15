@@ -35,7 +35,12 @@ class NeemObject:
         self.action = action
         self._calculate_start()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        String representation of this Object, used when printing this object.
+
+        :return: A string with the most important attributes of this object
+        """
         skip_attributes = ["_tf", "_tf_list", "action"]
         return self.__class__.__qualname__ + f"(" + ', '.join(
             [f"{key}={value}" if key not in skip_attributes else f"{key}=..." for key, value in
@@ -80,6 +85,8 @@ class NeemObject:
     def _clean_tf_for_json(self) -> Iterable:
         """
         Converts the datatypes used in MongoDB to ones used in json to save this Object as a json.
+
+        :yield: A generator for the cleaned TFs
         """
         for tf in self.get_tfs():
             tf["_id"] = str(tf["_id"])
@@ -106,7 +113,7 @@ class NeemObject:
         account.
 
         :param action: Action during which the TF should be returned
-        :return:
+        :return: An iterable for the TFs during the action
         """
         if self._tf:
             return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - self.action.neem.action_tf_offset),
@@ -130,9 +137,14 @@ class NeemObject:
             return self._tf_list[start_index: end_index + 1]
 
     def _calculate_start(self):
+        """
+        Calculates the start time for this NEEM. This is the time of the first TF.
+        """
         if first_tf := next(self.get_tfs(), False):
             # first_tf = next(self.get_tfs())
             stamp = first_tf["header"]["stamp"]
+            if isinstance(stamp, str):
+                stamp = datetime.fromisoformat(stamp)
             self.start = stamp.timestamp()
         else:
             self.start = 0
@@ -180,8 +192,14 @@ class Action:
         for obj in self.objects:
             obj.action = self
 
-    def __repr__(self):
-        skip_attributes = ["participants", "objects"]
+    def __repr__(self) -> str:
+        """
+        String representation of this Action, used when printing this object.
+
+        :return: A string of the most important attributes of this Actiont
+        """
+        return f"Action(name={self.name}, start={self.start}, end={self.end})"
+        skip_attributes = ["participants", "objects", ]
         return self.__class__.__qualname__ + f"(" + ', '.join(
             [f"{key}={value}" if key not in skip_attributes else f"{key}=..." for key, value in
              self.__dict__.items()]) + ")"

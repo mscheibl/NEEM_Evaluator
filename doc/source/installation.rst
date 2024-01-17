@@ -19,8 +19,6 @@ workspace and running the following commands:
 .. code-block:: shell
 
     mkdir -p ~/catkin_ws/src
-    cd ~/catkin_ws/
-    catkin_make
 
 Afterwards clone the NEEM Evaluator repository into the src folder of the workspace:
 
@@ -28,6 +26,8 @@ Afterwards clone the NEEM Evaluator repository into the src folder of the worksp
 
     cd ~/catkin_ws/src
     git clone git@github.com:Tigul/NEEM_Evaluator.git
+    cd ~/catkin_ws/
+    catkin_make
 
 You need an ssh key in Github to clone the repository. If you do not have an ssh key in GitHub use the following url to
 clone the repository: https://github.com/Tigul/NEEM_Evaluator.git
@@ -63,3 +63,6 @@ If you want to use the URDF files in the 'resources' folder you need the followi
     * kitchen.urdf
 * https://github.com/PR2/pr2_common
     * pr2.urdf
+
+These need to be cloned to your catkin workspace and compiled with catkin_make. The catkin workspace should be
+`~/catkin_ws/src` if you followed the installation instructions above.

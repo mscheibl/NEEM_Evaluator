@@ -4,10 +4,12 @@ different metrics for the experience and narrative parts of the NEEM.
 
 ## Installation
 
-You can install the package with pip:
-```bash
-pip install .
-```
+You can find detailed installation instructions in the documentation. The following is a short summary.
+
+* Install ROS Noetic and create a catkin workspace
+  * http://wiki.ros.org/noetic/Installation/Ubuntu
+* Install the Python dependencies from the requirements.txt file
+  * `pip install -r requirements.txt`
 
 ## Documentation
 
@@ -25,4 +27,4 @@ execute the examples. The examples are also used in the documentation under the 
 * PyBullet
 
 ### Author
-Jonas Dech jdech@uni-bremen.de
+Jonas Dech <jdech@uni-bremen.de>

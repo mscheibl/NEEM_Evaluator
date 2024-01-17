@@ -75,6 +75,8 @@ class BulletWorld:
         self.set_gravity([0, 0, -9.8])
         if not is_shadow_world:
             plane = Object("floor", "environment", "plane.urdf", world=self)
+        p.resetDebugVisualizerCamera(cameraDistance=5.3, cameraYaw=90, cameraPitch=-50,
+                                     cameraTargetPosition=[1.3, 2.5, 0.5])
 
     def get_objects_by_name(self, name: str) -> List[Object]:
         return list(filter(lambda obj: obj.name == name, self.objects))

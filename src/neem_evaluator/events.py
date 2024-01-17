@@ -77,6 +77,7 @@ def event_metric(neem1: 'NEEM', neem2: 'NEEM'):
         * Events ordered by time
         * the count for each event type
         * Total time taken for each NEEM
+        * Failed grasping attempts
 
     :param neem1: The first NEEM to compare
     :param neem2: The second NEEM to compare

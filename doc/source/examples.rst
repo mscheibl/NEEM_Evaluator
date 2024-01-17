@@ -8,3 +8,4 @@ want to try these examples yourself, please follow the instructions in the examp
 
 .. nbgallery::
     notebooks/Neem_evaluation.ipynb
+    notebooks/Neem_visualization.ipynb

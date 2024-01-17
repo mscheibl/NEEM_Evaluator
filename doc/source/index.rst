@@ -2,6 +2,11 @@
 Welcome to NEEM Evaluators documentation!
 =========================================
 
+------------------
+Installation Guide
+------------------
+You can find the installation guide `here <installation.html>`_.
+
 ---------------------------
 What is the NEEM Evaluator?
 ---------------------------
@@ -23,7 +28,7 @@ Examples
 --------
 
 Some examples on how to use the NEEM Evaluator can be found in the `examples` folder. And in the
-examples category of the documentation.
+examples category of the documentation `here <examples.html>`_.
 
 .. toctree::
    :maxdepth: 2
@@ -31,6 +36,7 @@ examples category of the documentation.
 
    installation
    examples
+   metrics
 
 
 

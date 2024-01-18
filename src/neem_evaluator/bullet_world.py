@@ -20,10 +20,8 @@ from queue import Queue
 
 import rospy
 from typing import List, Optional, Union, Dict
-#from .event import Event
-#from .robot_descriptions.robot_description_handler import InitializedRobotDescription as robot_description
 from typing import List, Optional, Dict, Tuple, Callable, Type
-from .helper import transform_to_translation
+from .helper import transform_to_translation, transform_to_list
 
 
 
@@ -86,15 +84,6 @@ class BulletWorld:
 
     def get_object_by_id(self, id: int) -> Object:
         return list(filter(lambda obj: obj.id == id, self.objects))[0]
-
-    #def get_attachment_event(self) -> Event:
-    #    return self.attachment_event
-
-    #def get_detachment_event(self) -> Event:
-    #    return self.detachment_event
-
-    #def get_manipulation_event(self) -> Event:
-    #    return self.manipulation_event
 
     def set_realtime(self, real_time: bool) -> None:
         p.setRealTimeSimulation(1 if real_time else 0, self.client_id)
@@ -242,22 +231,43 @@ class BulletWorld:
             rospy.logerr("The given object is not in the shadow world")
 
     def visualize_trajectory(self, tfs, mark_seq=[], color=None):
+        """
+        Visualize a trajectory given by the list of transforms in `tfs` in the BulletWorld. If a list of sequence numbers
+        is given these will be annotated in the visualized trajectory.
+
+        :param tfs: A cursor or list of transforms
+        :param mark_seq: A list of sequence numbers that should be annotated in the trajectory
+        :param color: The color of the trajectory
+        """
         tfs_list = list(tfs)
-        color = color if color else [1,0,0]
-        for i in range(len(tfs_list) -1):
+        color = color if color else [1, 0, 0]
+        for i in range(len(tfs_list) - 1):
             source = transform_to_translation(tfs_list[i]["transform"])
             target = transform_to_translation(tfs_list[i+1]["transform"])
             self.trajectory_ids.append(p.addUserDebugLine(source, target, color))
             if tfs_list[i]["header"]["seq"] in mark_seq:
                 self.trajectory_ids.append(p.addUserDebugText("Metric", source, [0, 0, 0]))
 
+    def replay_trajectory(self, tfs, replay_object: Object):
+        """
+        Replays a trajectory given by the list of transforms in `tfs` in the BulletWorld. To replay the trajectory the
+        given object is moved along the trajectory.
+
+        :param tfs: A cursor or list of transforms
+        :param replay_object: The object that should be moved along the trajectory
+        """
+        for tf in tfs:
+            replay_object.set_position_and_orientation(*transform_to_list(tf["transform"]))
+            time.sleep(0.05)
+
     def remove_trajectory(self):
+        """
+        Removes all trajectories from the BulletWorld
+        """
         for line in self.trajectory_ids:
             p.removeUserDebugItem(line)
 
 
-
-#current_bullet_world = BulletWorld.current_bullet_world
 
 class Use_shadow_world():
 
@@ -409,7 +419,7 @@ class Object:
             with open(self.path, mode="r") as f:
                 urdf_string = f.read()
             robot_name = _get_robot_name_from_urdf(urdf_string)
-            #if robot_name == robot_description.i.name and BulletWorld.robot == None:
+            # if robot_name == robot_description.i.name and BulletWorld.robot == None:
             #    BulletWorld.robot = self
 
     def remove(self) -> None:
@@ -428,7 +438,6 @@ class Object:
         if self.world.shadow_world != None:
             self.world.world_sync.remove_obj_queue.put(self)
         p.removeBody(self.id, physicsClientId=self.world.client_id)
-
 
     def attach(self, object: Object, link: Optional[str] = None, loose: Optional[bool] = False) -> None:
         """
@@ -453,8 +462,7 @@ class Object:
                             [0, 1, 0], link_T_object[0], [0, 0, 0], link_T_object[1], physicsClientId=self.world.client_id)
         self.cids[object] = cid
         object.cids[self] = cid
-        #self.world.attachment_event(self, [self, object])
-
+        # self.world.attachment_event(self, [self, object])
 
     def detach(self, object: Object) -> None:
         """
@@ -472,7 +480,7 @@ class Object:
 
         del self.cids[object]
         del object.cids[self]
-        #self.world.detachment_event(self, [self, object])
+        # self.world.detachment_event(self, [self, object])
 
     def detach_all(self) -> None:
         """
@@ -604,7 +612,7 @@ class Object:
             logging.error(f"The joint position has to be within the limits of the joint. The joint limits for {joint_name} are {low_lim} and {up_lim}")
             logging.error(f"The given joint position was: {joint_pose}")
             # Temporarily disabled because kdl outputs values exciting joint limits
-            #return
+            # return
         p.resetJointState(self.id, self.joints[joint_name], joint_pose, physicsClientId=self.world.client_id)
         self._set_attached_objects([self])
 
@@ -683,7 +691,6 @@ class Object:
         return p.getAABB(self.id, self.links[link_name], self.world.client_id)
 
 
-
 def filter_contact_points(contact_points, exclude_ids) -> List:
     return list(filter(lambda cp: cp[2] not in exclude_ids, contact_points))
 
@@ -734,8 +741,8 @@ def _load_object(name: str,
         for dir in world.data_directory:
             path = get_path_from_data_dir(path, dir)
             if path: break
-    #rospack = rospkg.RosPack()
-    #cach_dir = rospack.get_path('pycram') + '/resources/cached/'
+    # rospack = rospkg.RosPack()
+    # cach_dir = rospack.get_path('pycram') + '/resources/cached/'
     cach_dir = world.data_directory[0] + '/cached/'
     if not pathlib.Path(cach_dir).exists():
         os.mkdir(cach_dir)
@@ -774,7 +781,8 @@ def _load_object(name: str,
         logging.error("The File could not be loaded. Plese note that the path has to be either a URDF, stl or obj file or the name of an URDF string on the parameter server.")
         os.remove(path)
         raise(e)
-        #print(f"{bcolors.BOLD}{bcolors.WARNING}The path has to be either a path to a URDf file, stl file, obj file or the name of a URDF on the parameter server.{bcolors.ENDC}")
+        # print(f"{bcolors.BOLD}{bcolors.WARNING}The path has to be either a path to a URDf file, stl file, obj file or
+        # the name of a URDF on the parameter server.{bcolors.ENDC}")
 
 
 def _is_cached(path: str, name: str, cach_dir: str) -> bool:

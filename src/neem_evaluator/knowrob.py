@@ -1,19 +1,37 @@
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 import rospy
 import rosservice
 from .mongo import restore, tf, get_tf_for_object
 from datetime import datetime
-if '/rosprolog/query' in rosservice.get_service_list():
+
+try:
     from rosprolog_client import Prolog
-    prolog = Prolog()
-else:
+    # prolog = Prolog()
+except ImportError:
     rospy.logerr("No Knowrob services found")
-    raise ImportWarning("No Knowrob services found")
 
 rospy.init_node("NEEM_Evaluator")
 
+prolog = None
 
+
+def init_prolog(func: Callable) -> Callable:
+    """
+    Decorator for initializing the prolog client if it is not already initialized.
+
+    :param func: Function that should be decorated
+    :return: The decorated function
+    """
+
+    def wrapper(*args, **kwargs):
+        global prolog
+        if not prolog:
+            prolog = Prolog()
+        return func(*args, **kwargs)
+
+
+@init_prolog
 def remember_neem(path: str):
     """
     Loads the neem in the given path to knowrob
@@ -25,9 +43,10 @@ def remember_neem(path: str):
     prolog.once(f"remember('{path}')")
     # Is needed since Knowrob does not load the TF data to Mongo and without it
     # the queries do not work
-    #restore(path)
+    # restore(path)
 
 
+@init_prolog
 def get_event_intervals() -> Dict[str, Dict[str, int]]:
     """
     Returns the start and end times for all actions
@@ -42,6 +61,7 @@ def get_event_intervals() -> Dict[str, Dict[str, int]]:
     return result
 
 
+@init_prolog
 def get_all_actions_in_neem() -> Dict[str, List]:
     """
     Returns a dictionary which maps all actions happening in this NEEM to the human-readable name of the action.
@@ -51,7 +71,7 @@ def get_all_actions_in_neem() -> Dict[str, List]:
     actions = prolog.once("findall([Act, Task], (is_action(Act), executes_task(Act, Task)), Act)")["Act"]
     res = {}
     for act in actions:
-        #res[act[0]] = act[1]
+        # res[act[0]] = act[1]
         action_type = act[1].split('#')[1].split("_")[0]
         if action_type in res.keys():
             res[action_type].append(act[0])
@@ -60,6 +80,7 @@ def get_all_actions_in_neem() -> Dict[str, List]:
     return res
 
 
+@init_prolog
 def get_objects_for_action(action: str) -> List[str]:
     """
     Returns a list of objects which are part of the given action.
@@ -77,6 +98,7 @@ def get_objects_for_action(action: str) -> List[str]:
     return act_to_obj[action]
 
 
+@init_prolog
 def get_actions_for_object() -> Dict[str, List[str]]:
     """
     Returns a dictionary which maps all available knowrob objetct instances to the actions which they are part of.
@@ -97,6 +119,7 @@ def get_actions_for_object() -> Dict[str, List[str]]:
     return object_to_actions
 
 
+@init_prolog
 def get_link_name_for_object(object: str) -> str:
     """
     Returns the link name for a knowrob object instance.
@@ -110,6 +133,7 @@ def get_link_name_for_object(object: str) -> str:
         return link_name.split("#")[1]
 
 
+@init_prolog
 def get_all_tf_for_action(action: str) -> Dict[str, Dict]:
     """
     Get all TFs for objects that are part of the given action.
@@ -128,13 +152,15 @@ def get_all_tf_for_action(action: str) -> Dict[str, Dict]:
             # daylight saving time into account, Knowrob does not which creates a difference of 3600 or
             # 7200 seconds (1 or 2 h) depending on summer or winter time.
             result[obj] = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"] - 3600),
-                                                    "$lt": datetime.fromtimestamp(intervals["end"] - 3600)}, "child_frame_id": link_name})
+                                                    "$lt": datetime.fromtimestamp(intervals["end"] - 3600)},
+                                   "child_frame_id": link_name})
         else:
             continue
 
     return result
 
 
+@init_prolog
 def map_sequence_to_action(object: str) -> Dict[int, str]:
     """
     Maps the sequences of the trajectory of the given object to the action that occurred during that sequence. The object
@@ -153,13 +179,15 @@ def map_sequence_to_action(object: str) -> Dict[int, str]:
     for act in o_t_a[object]:
         intervals = action_intervals[act]
         tfs = tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(intervals["start"] - 3600),
-                                  "$lt": datetime.fromtimestamp(intervals["end"] - 3600)}, "child_frame_id": obj_to_link[object]})
+                                        "$lt": datetime.fromtimestamp(intervals["end"] - 3600)},
+                       "child_frame_id": obj_to_link[object]})
         seqs = map(lambda x: x["header"]["seq"], tfs)
         for s in seqs:
             seqs_to_action[s] = all_actions[act]
     return seqs_to_action
 
 
+@init_prolog
 def get_object_for_link(link_name: str) -> str:
     """
     Returns the knowrob object name for a link/TF name

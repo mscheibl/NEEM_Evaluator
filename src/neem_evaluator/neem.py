@@ -26,7 +26,7 @@ class NeemObject:
         self.instance: str = instance
         self._tf = None
         self._tf_list: List = []
-        self.link_name: str = link_name if link_name else get_link_name_for_object(self.instance)
+        self.link_name: str = link_name if link_name or name == "AnnaLisa" else get_link_name_for_object(self.instance)
 
         if tf_list:
             self._tf_list = tf_list
@@ -116,8 +116,8 @@ class NeemObject:
         :return: An iterable for the TFs during the action
         """
         if self._tf:
-            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - self.action.neem.action_tf_offset),
-                                                  "$lt": datetime.fromtimestamp(action.end - self.action.neem.action_tf_offset)},
+            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600 * 2),
+                                                  "$lt": datetime.fromtimestamp(action.end - 3600 * 2)},
                         "child_frame_id": self.link_name}))
         else:
             start_index = 0
@@ -126,10 +126,10 @@ class NeemObject:
             if not self._tf_list:
                 return []
             for transform in self._tf_list:
-                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start - self.action.neem.action_tf_offset:
+                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start - 3600 *2:
                     start_index = i
                     # print(f"Start: {start_index}")
-                if action.end - self.action.neem.action_tf_offset <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
+                if action.end - 3600 * 2 <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
                     end_index = i
                     # print(f"End: {end_index}")
 
@@ -272,13 +272,14 @@ class Neem:
 
         self._set_relative_times()
 
-        self._calculate_action_tf_offset()
+        #self._calculate_action_tf_offset()
 
     def _calculate_action_tf_offset(self):
         """
         Calculates the time difference between the first action and the first TF in this neem. The offset is used to get
         trajectories for objects during actions.
         """
+        print(self.action_list[1].objects[1])
         first_tf = list(self.action_list[0].objects[1].get_tfs())[0]
         if type(first_tf["header"]["stamp"]) == datetime:
             first_tf_timestamp = first_tf["header"]["stamp"].timestamp()

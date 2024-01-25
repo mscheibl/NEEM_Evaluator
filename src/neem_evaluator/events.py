@@ -29,7 +29,6 @@ def plot_events(neem: 'NEEM') -> None:
     # events = get_all_actions_in_neem()
     events = neem.action_list
     event_names = list(set([act.name for act in neem.action_list]))
-    print(event_names)
     rows = dict(zip(event_names, list(range(0, len(event_names)))))
 
     # rows = {"Reaching": 1, "Grasping": 2, "Pouring": 3, "PhysicalTask": 4}

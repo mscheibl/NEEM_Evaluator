@@ -2,7 +2,6 @@ from typing import Dict, Tuple, List, Iterable
 
 import numpy as np
 from numpy.typing import ArrayLike
-import pymongo
 
 
 def transform_to_list(transform: dict) -> List:

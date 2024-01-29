@@ -7,6 +7,7 @@ from .helper import time_ordered_actions
 from typing import Dict, List, Iterable, Union
 from bson.objectid import ObjectId
 from datetime import datetime
+from pytz import UTC
 
 import json
 import copy
@@ -116,8 +117,8 @@ class NeemObject:
         :return: An iterable for the TFs during the action
         """
         if self._tf:
-            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start - 3600 * 2),
-                                                  "$lt": datetime.fromtimestamp(action.end - 3600 * 2)},
+            return list(tf.find({"header.stamp": {"$gt": datetime.fromtimestamp(action.start, UTC),
+                                                  "$lt": datetime.fromtimestamp(action.end, UTC)},
                         "child_frame_id": self.link_name}))
         else:
             start_index = 0
@@ -126,12 +127,10 @@ class NeemObject:
             if not self._tf_list:
                 return []
             for transform in self._tf_list:
-                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start - 3600 *2:
+                if not start_index and datetime.fromisoformat(transform["header"]["stamp"]).timestamp() >= action.start:
                     start_index = i
-                    # print(f"Start: {start_index}")
-                if action.end - 3600 * 2 <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
+                if action.end <= datetime.fromisoformat(transform["header"]["stamp"]).timestamp():
                     end_index = i
-                    # print(f"End: {end_index}")
 
                 i += 1
             return self._tf_list[start_index: end_index + 1]

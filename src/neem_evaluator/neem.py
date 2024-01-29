@@ -27,7 +27,12 @@ class NeemObject:
         self.instance: str = instance
         self._tf = None
         self._tf_list: List = []
-        self.link_name: str = link_name if link_name or name == "AnnaLisa" else get_link_name_for_object(self.instance)
+        # Special case since NaturalPerson has no link name and restoring from json would otherwise try to use
+        # get_link_name_for_object which would fail
+        if name == instance:
+            self.link_name = link_name
+        else:
+            self.link_name: str = link_name if link_name else get_link_name_for_object(self.instance)
 
         if tf_list:
             self._tf_list = tf_list

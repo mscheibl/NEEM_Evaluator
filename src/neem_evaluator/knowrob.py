@@ -23,12 +23,12 @@ def init_prolog(func: Callable) -> Callable:
     :param func: Function that should be decorated
     :return: The decorated function
     """
-
     def wrapper(*args, **kwargs):
         global prolog
         if not prolog:
             prolog = Prolog()
         return func(*args, **kwargs)
+    return wrapper
 
 
 @init_prolog

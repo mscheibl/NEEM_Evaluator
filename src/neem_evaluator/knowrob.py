@@ -30,6 +30,8 @@ def init_prolog(func: Callable) -> Callable:
         return func(*args, **kwargs)
     return wrapper
 
+    return wrapper
+
 
 @init_prolog
 def remember_neem(path: str):

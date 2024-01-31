@@ -7,7 +7,6 @@ from datetime import datetime
 
 try:
     from rosprolog_client import Prolog
-    # prolog = Prolog()
 except ImportError:
     rospy.logerr("No Knowrob services found")
 
@@ -30,8 +29,25 @@ def init_prolog(func: Callable) -> Callable:
         return func(*args, **kwargs)
     return wrapper
 
-    return wrapper
+@init_prolog
+def memorize_neem(path: str):
+    """
+    Dumps the recorded NEEM in the given path.
 
+    :param path: Path to the neem
+    :return: None
+    """
+    prolog.once(f"memorize('{path}')")
+
+@init_prolog
+def load_owl(path: str):
+    """
+    Loads the given owl file into KnowRob.
+
+    :param path: Path to the OWL file
+    :return: None
+    """
+    prolog.once(f"load_owl('{path}')")
 
 @init_prolog
 def remember_neem(path: str):

@@ -26,6 +26,7 @@ def init_prolog(func: Callable) -> Callable:
         global prolog
         if not prolog:
             prolog = Prolog()
+        rospy.wait_for_service("/rosprolog/query")
         return func(*args, **kwargs)
     return wrapper
 

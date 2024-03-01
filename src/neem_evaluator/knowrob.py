@@ -1,8 +1,6 @@
 from typing import Dict, List, Callable
-
 import rospy
-import rosservice
-from .mongo import restore, tf, get_tf_for_object
+from .mongo import tf
 from datetime import datetime
 
 try:
@@ -13,7 +11,6 @@ except ImportError:
 rospy.init_node("NEEM_Evaluator")
 
 prolog = None
-
 
 def init_prolog(func: Callable) -> Callable:
     """
@@ -150,27 +147,6 @@ def get_link_name_for_object(object: str) -> str:
     if query:
         link_name = query["A"]
         return link_name.split("#")[1]
-
-@init_prolog
-def republish_to_rviz() -> bool:
-    """
-    Republishes the currently loaded NEEM to RVIZ.
-    :return: True if the tf data is successfully loaded into RVIZ. False otherwise.
-    :rtype: bool
-    """
-    query = prolog.once("is_episode(Epi), is_setting_for(Epi,Act), is_action(Act)")
-    if query:
-        main_action = query["Act"]
-        print("MAIN ACTION: {}".format(main_action))
-        query = prolog.once("has_time_interval('{}',T), has_interval_begin(T,Start), has_interval_end(T, End)".format(main_action))
-        if query:
-            start = query["Start"]
-            end = query["End"]
-            print("START: {}".format(start))
-            print("END: {}".format(end))
-            prolog.once("tf_plugin:tf_republish_set_goal({}, {})".format(start,end))
-            return True
-    return False
 
 @init_prolog
 def get_all_tf_for_action(action: str) -> Dict[str, Dict]:
